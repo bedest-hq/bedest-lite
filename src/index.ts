@@ -28,7 +28,7 @@ if (app.server) {
   WsManager.init(app.server);
 }
 
-logger.info("✨ Hello Bedest ✨");
+logger.info("✨ Hello Bedest Lite ✨");
 logger.info(
   `⚡ Elysia is running at http://${app.server?.hostname}:${app.server?.port}`,
 );

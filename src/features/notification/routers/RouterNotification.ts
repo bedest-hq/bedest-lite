@@ -65,7 +65,6 @@ export const RouterNotification = new Elysia({
     }),
     open(ws) {
       const { userRuntime } = ws.data;
-      ws.subscribe(`tenant:${userRuntime.tenantId}`);
       ws.subscribe(`user:${userRuntime.session.userId}`);
       ws.send({ event: "connected" });
     },
@@ -76,7 +75,6 @@ export const RouterNotification = new Elysia({
     },
     close(ws) {
       const { userRuntime } = ws.data;
-      ws.unsubscribe(`tenant:${userRuntime.tenantId}`);
       ws.unsubscribe(`user:${userRuntime.session.userId}`);
     },
   });

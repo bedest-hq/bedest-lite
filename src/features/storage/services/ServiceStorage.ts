@@ -1,10 +1,9 @@
 import { SStorage } from "../schemas/SStorage";
-
 import { status } from "elysia";
 import StorageManager from "@/infrastructure/storage/StorageManager";
-import { ITenantApp, IUserApp, ServiceBaseTenant } from "bedest-core";
+import { IApp, IUserApp, ServiceBase } from "bedest-core";
 
-class ServiceStorage extends ServiceBaseTenant<typeof SStorage, string> {
+class ServiceStorage extends ServiceBase<typeof SStorage, string> {
   constructor() {
     super(SStorage);
   }
@@ -12,7 +11,7 @@ class ServiceStorage extends ServiceBaseTenant<typeof SStorage, string> {
   async upload(c: IUserApp, file: File) {
     const fileExtension = file.name.split(".").pop();
     const uniqueFileName = `${crypto.randomUUID()}.${fileExtension}`;
-    const key = `${c.tenantId}/${uniqueFileName}`;
+    const key = uniqueFileName;
 
     const arrayBuffer = await file.arrayBuffer();
 
@@ -28,7 +27,7 @@ class ServiceStorage extends ServiceBaseTenant<typeof SStorage, string> {
     return { id: res.id, key: key };
   }
 
-  async get(c: ITenantApp, id: string) {
+  async get(c: IApp, id: string) {
     const fileRecord = await super.getById(c, id, {
       key: SStorage.key,
       mimeType: SStorage.mimeType,

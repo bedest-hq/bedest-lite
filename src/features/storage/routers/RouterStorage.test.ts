@@ -68,7 +68,6 @@ describe("RouterStorage", () => {
 
     expect(res.status).toBe(200);
     expect(res.data!.data.length).toBeGreaterThanOrEqual(1);
-
     expect(res.data!.data[0].name).toBe("list-image.png");
   });
 

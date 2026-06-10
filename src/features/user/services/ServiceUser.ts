@@ -2,9 +2,9 @@ import { EUserRole } from "../enums/EUserRole";
 import { SUser } from "../schemas/SUser";
 import { status } from "elysia";
 import { eq, and } from "drizzle-orm";
-import { IUserApp, ServiceBaseTenant, UtilTenantScope } from "bedest-core";
+import { IUserApp, ServiceBase } from "bedest-core";
 
-class ServiceUser extends ServiceBaseTenant<typeof SUser, string> {
+class ServiceUser extends ServiceBase<typeof SUser, string> {
   constructor() {
     super(SUser);
   }
@@ -73,7 +73,7 @@ class ServiceUser extends ServiceBaseTenant<typeof SUser, string> {
   ) {
     const isSelf = c.session.userId === id;
     const isPrivileged = [EUserRole.ADMIN, EUserRole.SYSTEM].includes(
-      c.session.role as EUserRole, // FIXME with a better usage.
+      c.session.role as EUserRole,
     );
 
     if (!isSelf && !isPrivileged) {
@@ -88,14 +88,11 @@ class ServiceUser extends ServiceBaseTenant<typeof SUser, string> {
           });
         }
 
-        const existing = await UtilTenantScope.tenantScope(c, async (tx) => {
-          const [row] = await tx
-            .select({ password: SUser.password })
-            .from(SUser)
-            .where(and(eq(SUser.id, id), eq(SUser.isDeleted, false)))
-            .limit(1);
-          return row;
-        });
+        const [existing] = await c.db
+          .select({ password: SUser.password })
+          .from(SUser)
+          .where(and(eq(SUser.id, id), eq(SUser.isDeleted, false)))
+          .limit(1);
 
         if (!existing) {
           throw status("Not Found");

@@ -11,10 +11,7 @@ import {
   beforeAll,
 } from "bun:test";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
-
 import { TEnv } from "../types/TEnv";
-import { STenant } from "@f/tenant/schemas/STenant";
-import { ETenantPlan } from "@/features/tenant/enums/ETenantPlan";
 import { SUser } from "@f/user/schemas/SUser";
 import { EUserRole } from "@/features/user/enums/EUserRole";
 import Elysia from "elysia";
@@ -39,7 +36,6 @@ expect.extend({
   toBeApiOk(received: unknown) {
     const isNot = this.isNot;
     const res = received as { error?: string };
-
     return {
       pass: res.error === undefined,
       message: () => (isNot ? "Response is ok" : "Response is not ok."),
@@ -47,11 +43,9 @@ expect.extend({
       expected: "OK",
     };
   },
-
   toBeApiError(received: unknown, expected: string) {
     const isNot = this.isNot;
     const res = received as { error?: string };
-
     return {
       pass: res.error !== undefined && res.error === expected,
       message: () =>
@@ -79,7 +73,6 @@ const test_env: TEnv = {
   REFRESH_KEY: "refresh-key",
   SECRET_KEY: "secret-key",
   PORT: 3000,
-
   LOCAL_STORAGE_PATH: "./test_uploads",
   S3_ENDPOINT: "http://localhost:9000",
   S3_REGION: "us-east-1",
@@ -104,7 +97,6 @@ const test_signer = new Elysia().use(
   }),
 );
 
-export let test_tenant: typeof STenant.$inferSelect;
 export let test_user: typeof SUser.$inferSelect;
 export { test_db, test_env };
 
@@ -115,7 +107,6 @@ export const testHeaders = async (user = test_user) => {
 
   const token = await test_signer.decorator.accessJwt.sign({
     userId: user.id,
-    tenantId: user.tenantId,
     sessionId: SYSTEM_UUID,
     role: user.role,
   });
@@ -132,32 +123,11 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  const datetimeNow = new Date();
-  const datetimeNextYear = new Date();
-  datetimeNextYear.setFullYear(datetimeNow.getFullYear() + 1);
-
-  const [insertedTenant] = await test_db
-    .insert(STenant)
-    .values({
-      name: "Test Tenant",
-      domain: "test.com",
-      country: "Test Country",
-      email: "test@example.com",
-      phone: "05555555555",
-      plan: ETenantPlan.PROFESSIONAL,
-      planStart: datetimeNow,
-      planEnd: datetimeNextYear,
-    })
-    .returning();
-
-  test_tenant = insertedTenant;
-
   const [insertedUser] = await test_db
     .insert(SUser)
     .values({
       name: "Test User",
       email: "text@example.com",
-      tenantId: test_tenant.id,
       password: pass,
       role: EUserRole.SYSTEM,
       createdAt: new Date(),

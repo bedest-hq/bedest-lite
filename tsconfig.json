@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["bun-types"],
+    "paths": {
+      "@f/*": ["./src/features/*"],
+      "@/*": ["./src/*"],
+    },
+    "outDir": "dist",
+    "rootDir": "./src",
+    "forceConsistentCasingInFileNames": true,
+  },
+  "include": ["src"],
+}

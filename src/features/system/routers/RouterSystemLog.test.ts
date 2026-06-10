@@ -3,7 +3,6 @@ import { treaty } from "@elysiajs/eden";
 import {
   testHeaders,
   test_user,
-  test_tenant,
   test_db,
 } from "@/common/tests/TestManager.test";
 import { RouterSystemLog } from "./RouterSystemLog";
@@ -17,7 +16,6 @@ describe("RouterSystemLog", () => {
     const headers = await testHeaders();
 
     await test_db.insert(SSystemLog).values({
-      tenantId: test_tenant.id,
       userId: test_user.id,
       action: "PUNCH",
       entity: "captain_test",
@@ -45,7 +43,6 @@ describe("RouterSystemLog", () => {
     const [insertedLog] = await test_db
       .insert(SSystemLog)
       .values({
-        tenantId: test_tenant.id,
         userId: test_user.id,
         action: "DELETE",
         entity: "target_entity",

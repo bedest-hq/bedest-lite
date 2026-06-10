@@ -1,5 +1,3 @@
-import { STenant } from "@f/tenant/schemas/STenant";
-import { UtilDbSchema } from "bedest-core";
 import {
   pgTable,
   uuid,
@@ -13,9 +11,6 @@ export const SSystemLog = pgTable(
   "system_audit_logs",
   {
     id: uuid().defaultRandom().primaryKey(),
-    tenantId: uuid()
-      .references(() => STenant.id)
-      .notNull(),
     userId: uuid().notNull(),
 
     action: varchar({ length: 100 }).notNull(),
@@ -26,8 +21,5 @@ export const SSystemLog = pgTable(
 
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [
-    index("idx_audit_logs_entity").on(t.entity, t.entityId),
-    UtilDbSchema.tenantIsolationPolicy(t.tenantId),
-  ],
+  (t) => [index("idx_audit_logs_entity").on(t.entity, t.entityId)],
 ).enableRLS();

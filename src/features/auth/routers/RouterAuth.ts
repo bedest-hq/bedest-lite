@@ -91,7 +91,6 @@ export const RouterAuth = new Elysia({ prefix: "/auth", tags: ["Auth"] })
             { db, nowDatetime },
             {
               sessionId: payload.sessionId as string,
-              tenantId: payload.tenantId as string,
               userId: payload.userId as string,
               role: payload.role as EUserRole,
             },

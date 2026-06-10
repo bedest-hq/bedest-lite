@@ -4,7 +4,6 @@ import { Elysia } from "elysia";
 import {
   testHeaders,
   test_user,
-  test_tenant,
   test_db,
 } from "@/common/tests/TestManager.test";
 import { RouterNotification } from "./RouterNotification";
@@ -45,7 +44,6 @@ describe("RouterNotification", () => {
     const headers = await testHeaders();
 
     await test_db.insert(SNotification).values({
-      tenantId: test_tenant.id,
       userId: test_user.id,
       event: "test.event",
       payload: { message: "Hello World" },
@@ -67,13 +65,11 @@ describe("RouterNotification", () => {
 
     await test_db.insert(SNotification).values([
       {
-        tenantId: test_tenant.id,
         userId: test_user.id,
         event: "unread.event",
         isRead: false,
       },
       {
-        tenantId: test_tenant.id,
         userId: test_user.id,
         event: "read.event",
         isRead: true,
@@ -96,7 +92,6 @@ describe("RouterNotification", () => {
     const [notif] = await test_db
       .insert(SNotification)
       .values({
-        tenantId: test_tenant.id,
         userId: test_user.id,
         event: "mark.read.test",
       })
@@ -123,8 +118,8 @@ describe("RouterNotification", () => {
     const headers = await testHeaders();
 
     await test_db.insert(SNotification).values([
-      { tenantId: test_tenant.id, userId: test_user.id, event: "bulk.1" },
-      { tenantId: test_tenant.id, userId: test_user.id, event: "bulk.2" },
+      { userId: test_user.id, event: "bulk.1" },
+      { userId: test_user.id, event: "bulk.2" },
     ]);
 
     const patchRes = await api.notifications["read-all"].patch({}, { headers });

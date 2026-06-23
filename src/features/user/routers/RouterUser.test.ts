@@ -45,12 +45,14 @@ describe("RouterUser", () => {
     expect(res.status).toBe(200);
     expect(res.data!.data).toStrictEqual([
       {
+        id: expect.any(String),
         createdAt: expect.any(Date),
         name: "List User",
         role: EUserRole.USER,
         avatarId: null,
       },
       {
+        id: expect.any(String),
         createdAt: expect.any(Date),
         name: "Test User",
         role: EUserRole.SYSTEM,

@@ -44,6 +44,7 @@ class ServiceUser extends ServiceBase<typeof SUser, string> {
 
   async getAll(c: IUserApp, query: { limit: number; page: number }) {
     return super.getAll(c, query, {
+      id: SUser.id,
       name: SUser.name,
       role: SUser.role,
       avatarId: SUser.avatarId,

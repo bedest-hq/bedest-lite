@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/bedest-hq/bedest-lite/compare/v1.0.0...v1.1.0) (2026-06-28)
+
+
+### Features
+
+* SaaS features removed and become lite version of bedest. ([7bd9a74](https://github.com/bedest-hq/bedest-lite/commit/7bd9a74b50cf8462500adbcd89b34982adb17dd9))
+* SaaS features removed and become lite version of bedest. ([1c927a4](https://github.com/bedest-hq/bedest-lite/commit/1c927a4fc809ce8c3de011669198f209d548a099))
+
 ## 1.0.0 (2026-06-10)
 
 

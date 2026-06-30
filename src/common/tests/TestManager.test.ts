@@ -135,6 +135,15 @@ beforeEach(async () => {
     .returning();
 
   test_user = insertedUser;
+
+  const { SOrganization } = await import("@f/organization/schemas/SOrganization");
+  await test_db.insert(SOrganization).values({
+    displayName: "Acme Corp",
+    fullName: "Acme Corporation Inc.",
+    phone: "+1-800-555-0199",
+    address: "123 Acme Way, Cityville, ST 12345",
+    links: ["https://twitter.com/acmecorp", "https://linkedin.com/company/acmecorp"],
+  });
 });
 
 afterEach(async () => {

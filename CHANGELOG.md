@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.0](https://github.com/bedest-hq/bedest-lite/compare/v1.0.0...v1.1.0) (2026-07-20)
+
+
+### Features
+
+* new organization fields implementation. ([2ab045f](https://github.com/bedest-hq/bedest-lite/commit/2ab045f3015696dac0ab571ca5084d6aa5beb476))
+* new organization fields implementation. ([e978db6](https://github.com/bedest-hq/bedest-lite/commit/e978db602155422a00fcc970a819cf61b835169a))
+* organiation is implemented ([18838c0](https://github.com/bedest-hq/bedest-lite/commit/18838c050cff17e6579f9c94dcb621a4841f5ce2))
+* organiation is implemented ([1bc5af1](https://github.com/bedest-hq/bedest-lite/commit/1bc5af1a26422746693403de729758d2cda29916))
+* SaaS features removed and become lite version of bedest. ([7bd9a74](https://github.com/bedest-hq/bedest-lite/commit/7bd9a74b50cf8462500adbcd89b34982adb17dd9))
+* SaaS features removed and become lite version of bedest. ([1c927a4](https://github.com/bedest-hq/bedest-lite/commit/1c927a4fc809ce8c3de011669198f209d548a099))
+
 ## 1.0.0 (2026-06-10)
 
 

@@ -1,0 +1,5 @@
+{
+  "$schema": "https://bedest.dev/schema.json",
+  "template": "bedest-lite",
+  "version": "1.0.0"
+}

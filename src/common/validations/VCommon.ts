@@ -22,6 +22,7 @@ export const VEnv = t.Object({
   DATABASE_NAME: t.String(),
   DATABASE_USER: t.String(),
   DATABASE_PASSWORD: t.String(),
+  DATABASE_SSL: t.Optional(t.Boolean()),
 
   SECRET_KEY: t.String(),
   REFRESH_KEY: t.String(),

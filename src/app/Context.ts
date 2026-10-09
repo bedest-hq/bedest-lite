@@ -69,7 +69,7 @@ class Context {
             db,
             nowDatetime,
             session,
-          } as IUserApp;
+          };
 
           return { userRuntime };
         })

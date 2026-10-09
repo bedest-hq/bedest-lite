@@ -22,4 +22,4 @@ export const SSystemLog = pgTable(
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("idx_audit_logs_entity").on(t.entity, t.entityId)],
-).enableRLS();
+);

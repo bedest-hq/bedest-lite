@@ -1,5 +1,5 @@
 // src/features/session/services/ServiceSession.ts
-import { and, eq } from "drizzle-orm";
+import { and, eq, gt, lt } from "drizzle-orm";
 import { SSession } from "../schemas/SSession";
 import { IApp, IUserApp } from "bedest-core";
 
@@ -8,13 +8,19 @@ class ServiceSession {
     c: IApp,
     data: {
       userId: string;
+      expiresAt?: Date;
     },
   ) {
+    const expiresAt =
+      data.expiresAt ??
+      new Date(c.nowDatetime.getTime() + 7 * 24 * 60 * 60 * 1000);
+
     const [session] = await c.db
       .insert(SSession)
       .values({
         userId: data.userId,
         createdAt: c.nowDatetime,
+        expiresAt,
       })
       .returning({ id: SSession.id });
     return session;
@@ -24,9 +30,17 @@ class ServiceSession {
     const [res] = await c.db
       .select({ userId: SSession.userId })
       .from(SSession)
-      .where(eq(SSession.id, id))
+      .where(and(eq(SSession.id, id), gt(SSession.expiresAt, c.nowDatetime)))
       .limit(1);
     return !!res;
+  }
+
+  async cleanExpiredSessions(c: IApp) {
+    const deleted = await c.db
+      .delete(SSession)
+      .where(lt(SSession.expiresAt, c.nowDatetime))
+      .returning({ id: SSession.id });
+    return { count: deleted.length };
   }
 
   async remove(c: IUserApp, id: string) {

@@ -11,4 +11,4 @@ export const SStorage = pgTable(
     size: integer().notNull(),
   },
   (t) => [UtilDbSchema.activeIndex("idx_storage_active", t.id)],
-).enableRLS();
+);

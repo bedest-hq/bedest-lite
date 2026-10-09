@@ -1,7 +1,7 @@
 import { Elysia } from "elysia";
 import Context from "@/app/Context";
 import { EUserRole } from "@f/user/enums/EUserRole";
-import { IUserApp } from "bedest-core";
+import { IApp } from "bedest-core";
 import ServiceOrganization from "../services/ServiceOrganization";
 import {
   VOrganization,
@@ -16,7 +16,7 @@ export const RouterOrganization = new Elysia({
   .get(
     "/",
     async ({ db, nowDatetime }) => {
-      const publicRuntime = { db, nowDatetime } as unknown as IUserApp;
+      const publicRuntime: IApp = { db, nowDatetime };
       const res = await ServiceOrganization.getSelf(publicRuntime);
       return res;
     },

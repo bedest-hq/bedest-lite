@@ -15,7 +15,6 @@ class ContextBuilder {
 
     const userContext: IUserApp = {
       ...context,
-      tenantId: SYSTEM_UUID,
       session: {
         userId: SYSTEM_UUID,
         sessionId: SYSTEM_UUID,

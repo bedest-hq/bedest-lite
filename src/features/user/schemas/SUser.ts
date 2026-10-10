@@ -17,4 +17,4 @@ export const SUser = pgTable(
     UtilDbSchema.activeIndex("idx_users_active", t.id),
     UtilDbSchema.activeUniqueIndex("idx_users_email", t.email),
   ],
-).enableRLS();
+);

@@ -6,6 +6,9 @@ import { EUserRole } from "@f/user/enums/EUserRole";
 import { status } from "elysia";
 import ServiceSystemLog from "@f/system/services/ServiceSystemLog";
 import { IApp, IUserApp } from "bedest-core";
+import WsManager from "@/infrastructure/websocket/WsManager";
+
+const DUMMY_HASH = await Bun.password.hash("invalid_dummy_password");
 
 class ServiceAuth {
   async login(c: IApp, data: { email: string; password: string }) {
@@ -20,13 +23,14 @@ class ServiceAuth {
       .limit(1);
 
     if (!user) {
-      throw status("Not Found");
+      await Bun.password.verify(data.password, DUMMY_HASH);
+      throw status("Unauthorized", { message: "Invalid email or password" });
     }
 
     const verifyPass = await Bun.password.verify(data.password, user.password);
 
     if (!verifyPass) {
-      throw status("Unauthorized", { message: "Wrong password" });
+      throw status("Unauthorized", { message: "Invalid email or password" });
     }
 
     if (ServiceSystem.getMaintenance() && user.role !== "SYSTEM") {
@@ -47,7 +51,7 @@ class ServiceAuth {
           sessionId: session.id,
           isSuperUser: user.role === EUserRole.SYSTEM,
         },
-      } as IUserApp,
+      },
       {
         action: "LOGIN",
         entity: "auth",
@@ -65,6 +69,7 @@ class ServiceAuth {
 
   async logout(c: IUserApp) {
     await ServiceSession.remove(c, c.session.sessionId);
+    WsManager.disconnectUser(c.session.userId);
   }
 
   async refresh(
@@ -97,7 +102,7 @@ class ServiceAuth {
           sessionId: newSession.id,
           isSuperUser: payload.role === EUserRole.SYSTEM,
         },
-      } as IUserApp,
+      },
       {
         action: "REFRESH_TOKEN",
         entity: "auth",

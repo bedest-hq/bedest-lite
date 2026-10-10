@@ -8,8 +8,13 @@ import {
 import { RouterSystemLog } from "./RouterSystemLog";
 import { SSystemLog } from "../schemas/SSystemLog";
 import { SYSTEM_UUID } from "@/common/constants";
+import { RouterUser } from "@f/user/routers/RouterUser";
+import { SUser } from "@f/user/schemas/SUser";
+import { EUserRole } from "@f/user/enums/EUserRole";
+import { and, eq } from "drizzle-orm";
 
 const api = treaty(RouterSystemLog);
+const userApi = treaty(RouterUser);
 
 describe("RouterSystemLog", () => {
   it("List and filter audit logs for ADMIN/SYSTEM", async () => {
@@ -64,5 +69,43 @@ describe("RouterSystemLog", () => {
     const res = await api.log({ id: SYSTEM_UUID }).get({ headers });
 
     expect(res.status).toBe(404);
+  });
+
+  it("Capture failed and unauthorized requests in system_audit_logs via PluginAudit", async () => {
+    const [regularUser] = await test_db
+      .insert(SUser)
+      .values({
+        name: "Regular User Audit",
+        email: "regaudit-lite@example.com",
+        password: "hashedpassword",
+        role: EUserRole.USER,
+        createdAt: new Date(),
+      })
+      .returning();
+
+    const userHeaders = await testHeaders(regularUser);
+
+    // USER role cannot call DELETE /user/:id (requires ADMIN or SYSTEM)
+    const deleteRes = await userApi
+      .user({ id: test_user.id })
+      .delete({}, { headers: userHeaders });
+
+    expect(deleteRes.status).toBe(403);
+
+    // Verify audit record was persisted in system_audit_logs
+    const [failedLog] = await test_db
+      .select()
+      .from(SSystemLog)
+      .where(
+        and(
+          eq(SSystemLog.userId, regularUser.id),
+          eq(SSystemLog.action, "FAILED_DELETE"),
+        ),
+      )
+      .limit(1);
+
+    expect(failedLog).toBeDefined();
+    expect(failedLog.action).toBe("FAILED_DELETE");
+    expect((failedLog.payload as Record<string, unknown>).statusCode).toBe(403);
   });
 });

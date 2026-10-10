@@ -7,16 +7,22 @@ import {
   test_db,
 } from "@/common/tests/TestManager.test";
 import { RouterNotification } from "./RouterNotification";
+import { RouterAuth } from "@f/auth/routers/RouterAuth";
 import { SNotification } from "../schemas/SNotification";
 
 const api = treaty(RouterNotification);
 
 describe("RouterNotification", () => {
   let wsUrl: string;
+  let serverApp: ReturnType<typeof createApp>;
   let stopApp: () => void;
 
+  const createApp = () =>
+    new Elysia().use(RouterNotification).use(RouterAuth).listen(0);
+
   beforeAll(() => {
-    const app = new Elysia().use(RouterNotification).listen(0);
+    const app = createApp();
+    serverApp = app;
     wsUrl = `ws://localhost:${app.server?.port}/notifications/live`;
     stopApp = () => app.stop();
   });
@@ -180,6 +186,47 @@ describe("RouterNotification", () => {
       ws.onerror = () => {
         clearTimeout(timeout);
         resolve();
+      };
+    });
+  });
+
+  it("WebSocket disconnection on logout (code 1008)", async () => {
+    const headers = await testHeaders();
+
+    await new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(
+        () => reject(new Error("WS logout disconnection timeout")),
+        3000,
+      );
+
+      const ws = new WebSocket(wsUrl, {
+        // @ts-expect-error - Bun WebSocket accepts headers here
+        headers,
+      });
+
+      let receivedTerminated = false;
+
+      ws.onmessage = async (e) => {
+        const msg = JSON.parse(e.data as string);
+        if (msg.event === "connected") {
+          const authApi = treaty(serverApp);
+          const logoutRes = await authApi.auth.logout.post({}, { headers });
+          expect(logoutRes.status).toBe(200);
+        } else if (msg.event === "session_terminated") {
+          receivedTerminated = true;
+        }
+      };
+
+      ws.onclose = (e) => {
+        clearTimeout(timeout);
+        expect(e.code).toBe(1008);
+        expect(receivedTerminated).toBe(true);
+        resolve();
+      };
+
+      ws.onerror = () => {
+        clearTimeout(timeout);
+        reject(new Error("Unexpected WebSocket error"));
       };
     });
   });

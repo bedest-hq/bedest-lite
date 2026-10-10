@@ -19,4 +19,4 @@ export const SNotification = pgTable(
     readAt: timestamp({ withTimezone: true }),
   },
   (t) => [UtilDbSchema.activeIndex("idx_notifications_user", t.userId)],
-).enableRLS();
+);

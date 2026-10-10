@@ -3,7 +3,7 @@ import { SNotification } from "../schemas/SNotification";
 import { and, count, desc, eq } from "drizzle-orm";
 import { status } from "elysia";
 import { logger } from "@/infrastructure/logger/logger";
-import { IUserApp, UtilTenantScope } from "bedest-core";
+import { IUserApp } from "bedest-core";
 
 class ServiceNotification {
   /**
@@ -18,13 +18,11 @@ class ServiceNotification {
     payload?: Record<string, unknown>,
   ) {
     try {
-      await UtilTenantScope.tenantScope(c, async (tx) => {
-        await tx.insert(SNotification).values({
-          userId: targetUserId,
-          event,
-          payload: payload ?? {},
-          createdAt: c.nowDatetime,
-        });
+      await c.db.insert(SNotification).values({
+        userId: targetUserId,
+        event,
+        payload: payload ?? {},
+        createdAt: c.nowDatetime,
       });
     } catch (err) {
       logger.error(

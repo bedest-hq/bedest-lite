@@ -26,4 +26,4 @@ export const SOrganization = pgTable(
     links: jsonb().$type<string[]>(),
   },
   (t) => [UtilDbSchema.activeIndex("idx_organizations_active", t.id)],
-).enableRLS();
+);

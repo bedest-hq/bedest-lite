@@ -1,5 +1,5 @@
 import { SOrganization } from "../schemas/SOrganization";
-import { IUserApp, ServiceBase } from "bedest-core";
+import { IApp, ServiceBase } from "bedest-core";
 import { status } from "elysia";
 
 class ServiceOrganization extends ServiceBase<typeof SOrganization, string> {
@@ -7,7 +7,7 @@ class ServiceOrganization extends ServiceBase<typeof SOrganization, string> {
     super(SOrganization);
   }
 
-  async getSelf(c: IUserApp) {
+  async getSelf(c: IApp) {
     const orgs = await super.getAll(
       c,
       { limit: 1, page: 1 },

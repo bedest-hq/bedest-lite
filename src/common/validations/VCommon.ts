@@ -42,4 +42,13 @@ export const VEnv = t.Object({
   S3_SECRET_KEY: t.Optional(t.String()),
   S3_BUCKET: t.Optional(t.String()),
 
+  // Number of trusted reverse proxies in front of the app. 0 = ignore
+  // X-Forwarded-For and use the socket address.
+  TRUST_PROXY_HOPS: t.Integer({ minimum: 0, maximum: 10, default: 0 }),
+  // Login attempts per minute per (client IP + normalized e-mail).
+  RATE_LIMIT_LOGIN_PER_MIN: t.Integer({ minimum: 1, default: 5 }),
+  // Login attempts per minute per client IP (any e-mail).
+  RATE_LIMIT_LOGIN_IP_PER_MIN: t.Integer({ minimum: 1, default: 20 }),
+  // Token refreshes per minute per client IP.
+  RATE_LIMIT_REFRESH_PER_MIN: t.Integer({ minimum: 1, default: 30 }),
 });

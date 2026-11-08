@@ -6,7 +6,7 @@ import ServiceSystem from "@f/system/services/ServiceSystem";
 import { EUserRole } from "@f/user/enums/EUserRole";
 import { status } from "elysia";
 import ServiceSystemLog from "@f/system/services/ServiceSystemLog";
-import { IApp, IUserApp, TTransaction } from "bedest-core";
+import { IApp, IUserApp, TDbOrTx } from "bedest-core";
 import WsManager from "@/infrastructure/websocket/WsManager";
 
 const DUMMY_HASH = await Bun.password.hash("invalid_dummy_password");
@@ -16,7 +16,7 @@ const invalidCredentials = () =>
 
 class ServiceAuth {
   /** Active user, straight from the database. */
-  private async loadPrincipal(tx: TTransaction, userId: string) {
+  private async loadPrincipal(tx: TDbOrTx, userId: string) {
     const [row] = await tx
       .select({ userId: SUser.id, role: SUser.role })
       .from(SUser)

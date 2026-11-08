@@ -1,6 +1,6 @@
 import { and, eq, gt, lt, ne } from "drizzle-orm";
 import { SSession } from "../schemas/SSession";
-import { IApp, IUserApp, TTransaction } from "bedest-core";
+import { IApp, IUserApp, TDbOrTx } from "bedest-core";
 import WsManager from "@/infrastructure/websocket/WsManager";
 import { UtilSessionCache } from "../utils/UtilSessionCache";
 import { SRevokedRefreshToken } from "../schemas/SRevokedRefreshToken";
@@ -78,7 +78,7 @@ class ServiceSession {
     c: IApp,
     sessionId: string,
     resolvePrincipal: (
-      tx: TTransaction,
+      tx: TDbOrTx,
       userId: string,
     ) => Promise<TPrincipal | undefined>,
   ): Promise<{ principal: TPrincipal; sessionId: string } | null> {

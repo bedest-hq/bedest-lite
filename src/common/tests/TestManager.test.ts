@@ -73,6 +73,7 @@ const test_env: TEnv = {
   REFRESH_KEY: "refresh-key",
   SECRET_KEY: "secret-key",
   PORT: 3000,
+  SHUTDOWN_TIMEOUT_MS: 15000,
 
   TRUST_PROXY_HOPS: 0,
   RATE_LIMIT_LOGIN_PER_MIN: 5,

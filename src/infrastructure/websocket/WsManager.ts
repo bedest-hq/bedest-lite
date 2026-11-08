@@ -7,7 +7,7 @@ export interface IWsClient {
   close(code?: number, reason?: string): void;
 }
 
-class WsManager {
+export class WsManager {
   private server: IPublisher | null = null;
   private userSockets = new Map<string, Set<IWsClient>>();
   private sessionSockets = new Map<string, Set<IWsClient>>();
@@ -80,6 +80,26 @@ class WsManager {
       }
     }
     this.sessionSockets.delete(sessionId);
+  }
+
+  /** Closes every local socket (graceful shutdown uses 1001 "Going Away"). */
+  closeAll(code = 1001, reason = "Server shutting down") {
+    const sockets = new Set<IWsClient>();
+    for (const set of this.userSockets.values()) {
+      set.forEach((ws) => sockets.add(ws));
+    }
+    for (const set of this.sessionSockets.values()) {
+      set.forEach((ws) => sockets.add(ws));
+    }
+    for (const ws of sockets) {
+      try {
+        ws.close(code, reason);
+      } catch {
+        // ignore errors on already-closed sockets
+      }
+    }
+    this.userSockets.clear();
+    this.sessionSockets.clear();
   }
 
   publishToUser(userId: string, event: string, payload?: unknown) {

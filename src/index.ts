@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import EnvManager from "./infrastructure/env/EnvManager";
+import { UtilEnv } from "./infrastructure/env/UtilEnv";
 import DbManager from "./infrastructure/database/DbManager";
 import { ErrorHandler } from "./infrastructure/error/ErrorHandler";
 import cors from "@elysiajs/cors";
@@ -16,7 +17,7 @@ const { Router } = await import("./app/Router");
 export const app = new Elysia()
   .use(
     cors({
-      origin: env.NODE_ENV === "production" ? env.CORS_ORIGIN : true,
+      origin: env.NODE_ENV === "production" ? UtilEnv.corsOrigins(env) : true,
       credentials: true,
     }),
   )
@@ -27,6 +28,10 @@ export const app = new Elysia()
 
 if (app.server) {
   WsManager.init(app.server);
+}
+
+for (const warning of EnvManager.getWarnings()) {
+  logger.warn(warning);
 }
 
 logger.info("✨ Hello Bedest Lite ✨");

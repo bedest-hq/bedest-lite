@@ -1,8 +1,10 @@
 import { and, eq, gt, lt, ne } from "drizzle-orm";
 import { SSession } from "../schemas/SSession";
-import { IApp, IUserApp } from "bedest-core";
+import { IApp, IUserApp, TTransaction } from "bedest-core";
 import WsManager from "@/infrastructure/websocket/WsManager";
 import { UtilSessionCache } from "../utils/UtilSessionCache";
+import { SRevokedRefreshToken } from "../schemas/SRevokedRefreshToken";
+import { logger } from "@/infrastructure/logger/logger";
 
 class ServiceSession {
   private cache = new UtilSessionCache(30_000);
@@ -62,6 +64,91 @@ class ServiceSession {
     for (const id of sessionIds) {
       this.cache.delete(id);
     }
+  }
+
+  /**
+   * Atomically rotates a refresh session [SEC-09]: the old row is deleted
+   * with `DELETE ... RETURNING` and the new one inserted in the same
+   * transaction, so two concurrent refreshes cannot both succeed. A session
+   * id that was already rotated away is token reuse: every session of its
+   * family is revoked. `resolvePrincipal` re-reads the user inside the
+   * transaction; `undefined` rejects the refresh.
+   */
+  async rotate<TPrincipal extends { userId: string }>(
+    c: IApp,
+    sessionId: string,
+    resolvePrincipal: (
+      tx: TTransaction,
+      userId: string,
+    ) => Promise<TPrincipal | undefined>,
+  ): Promise<{ principal: TPrincipal; sessionId: string } | null> {
+    const outcome = await c.db.transaction(async (tx) => {
+      const [old] = await tx
+        .delete(SSession)
+        .where(
+          and(eq(SSession.id, sessionId), gt(SSession.expiresAt, c.nowDatetime)),
+        )
+        .returning({ userId: SSession.userId, familyId: SSession.familyId });
+
+      if (!old) {
+        const [reused] = await tx
+          .select({ familyId: SRevokedRefreshToken.familyId })
+          .from(SRevokedRefreshToken)
+          .where(eq(SRevokedRefreshToken.sessionId, sessionId))
+          .limit(1);
+        if (!reused) {
+          return { kind: "invalid" as const, revoked: [] };
+        }
+        const family = await tx
+          .delete(SSession)
+          .where(eq(SSession.familyId, reused.familyId))
+          .returning({ id: SSession.id });
+        return { kind: "reused" as const, revoked: family.map((r) => r.id) };
+      }
+
+      await tx.insert(SRevokedRefreshToken).values({
+        sessionId,
+        familyId: old.familyId,
+        revokedAt: c.nowDatetime,
+      });
+
+      const principal = await resolvePrincipal(tx, old.userId);
+      if (!principal) {
+        return { kind: "invalid" as const, revoked: [] };
+      }
+
+      const [fresh] = await tx
+        .insert(SSession)
+        .values({
+          userId: principal.userId,
+          familyId: old.familyId,
+          createdAt: c.nowDatetime,
+          expiresAt: new Date(
+            c.nowDatetime.getTime() + 7 * 24 * 60 * 60 * 1000,
+          ),
+        })
+        .returning({ id: SSession.id });
+
+      return { kind: "rotated" as const, principal, sessionId: fresh.id };
+    });
+
+    this.markRevoked([sessionId]);
+
+    if (outcome.kind === "rotated") {
+      return { principal: outcome.principal, sessionId: outcome.sessionId };
+    }
+
+    if (outcome.kind === "reused") {
+      logger.warn(
+        { sessionId, revokedSessions: outcome.revoked.length },
+        "[ServiceSession] Refresh token reuse detected; token family revoked",
+      );
+      this.markRevoked(outcome.revoked);
+      for (const id of outcome.revoked) {
+        WsManager.disconnectSession(id);
+      }
+    }
+    return null;
   }
 
   /** Revokes one session and closes its sockets. */

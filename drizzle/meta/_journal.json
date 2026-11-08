@@ -8,6 +8,13 @@
       "when": 1794149036336,
       "tag": "0000_panoramic_tarantula",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794151909706,
+      "tag": "0001_session_token_families",
+      "breakpoints": true
     }
   ]
 }

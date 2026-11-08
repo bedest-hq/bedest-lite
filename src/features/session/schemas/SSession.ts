@@ -5,9 +5,15 @@ export const SSession = pgTable(
   {
     id: uuid().defaultRandom().primaryKey(),
     userId: uuid().notNull(),
+    // All sessions produced by rotating one login share a family [SEC-09].
+    familyId: uuid().defaultRandom().notNull(),
     createdAt: timestamp({ withTimezone: true }).notNull(),
     expiresAt: timestamp({ withTimezone: true }).notNull(),
   },
 
-  (t) => [index().on(t.userId), index("idx_sessions_expires_at").on(t.expiresAt)],
+  (t) => [
+    index().on(t.userId),
+    index("idx_sessions_expires_at").on(t.expiresAt),
+    index("idx_sessions_family").on(t.familyId),
+  ],
 );

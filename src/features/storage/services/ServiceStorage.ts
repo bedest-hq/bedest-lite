@@ -12,8 +12,11 @@ class ServiceStorage extends ServiceBase<typeof SStorage, string> {
   }
 
   /** Only READY files are ever listed or served. */
-  protected override getFilters(id?: string): SQL[] {
-    return [...super.getFilters(id), eq(SStorage.status, EStorageStatus.READY)];
+  protected override getFilters(c: IApp, id?: string): SQL[] {
+    return [
+      ...super.getFilters(c, id),
+      eq(SStorage.status, EStorageStatus.READY),
+    ];
   }
 
   /**

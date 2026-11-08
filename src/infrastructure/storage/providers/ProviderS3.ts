@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
 } from "@aws-sdk/client-s3";
 import EnvManager from "../../env/EnvManager";
 import { logger } from "../../logger/logger";
@@ -33,6 +34,13 @@ export class ProviderS3 implements IProvider {
         secretAccessKey: env.S3_SECRET_KEY,
       },
       forcePathStyle: true,
+    });
+  }
+
+  /** HEAD the bucket (2 s timeout). */
+  async healthCheck(): Promise<void> {
+    await this.client.send(new HeadBucketCommand({ Bucket: this.bucket }), {
+      abortSignal: AbortSignal.timeout(2000),
     });
   }
 

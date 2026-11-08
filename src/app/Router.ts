@@ -6,6 +6,7 @@ import { RouterSystem } from "@f/system/routers/RouterSystem";
 import { RouterStorage } from "@f/storage/routers/RouterStorage";
 import { RouterNotification } from "@f/notification/routers/RouterNotification";
 import { RouterOrganization } from "@f/organization/routers/RouterOrganization";
+import { RouterHealth } from "@f/health/routers/RouterHealth";
 
 const v1 = new Elysia({ prefix: "/v1" })
   .use(RouterAuth)
@@ -15,4 +16,8 @@ const v1 = new Elysia({ prefix: "/v1" })
   .use(RouterOrganization)
   .use(RouterNotification);
 
-export const Router = new Elysia({ prefix: "/api" }).use(Swagger).use(v1);
+// Health lives outside /api/v1 (FEAT-01).
+export const Router = new Elysia({ prefix: "/api" })
+  .use(Swagger)
+  .use(RouterHealth)
+  .use(v1);

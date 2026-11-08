@@ -127,6 +127,22 @@ export const testHeaders = async (user = test_user) => {
 };
 
 let pass: string;
+
+export const createTestUser = async (userRole = EUserRole.USER) => {
+  const [createdUser] = await test_db
+    .insert(SUser)
+    .values({
+      name: `Test User ${userRole}`,
+      email: `user_${crypto.randomUUID().slice(0, 8)}@example.com`,
+      password: pass,
+      role: userRole,
+      createdAt: new Date(),
+    })
+    .returning();
+
+  const headers = await testHeaders(createdUser);
+  return { user: createdUser, headers };
+};
 beforeAll(async () => {
   await migrate(test_db, { migrationsFolder: "drizzle" });
   pass = await password.hash("test_password");

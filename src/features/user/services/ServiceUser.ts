@@ -1,7 +1,7 @@
 import { EUserRole } from "../enums/EUserRole";
 import { SUser } from "../schemas/SUser";
 import { status } from "elysia";
-import { eq, and } from "drizzle-orm";
+import { and, count, eq, ne } from "drizzle-orm";
 import { IUserApp, ServiceBase } from "bedest-core";
 import { IPolicyActor, UtilUserPolicy } from "../utils/UtilUserPolicy";
 import { UtilEmail } from "../utils/UtilEmail";
@@ -149,12 +149,48 @@ class ServiceUser extends ServiceBase<typeof SUser, string> {
     return { success: true };
   }
 
+  /**
+   * Refuses to delete the last active ADMIN or the last active SYSTEM user
+   * (self-lockout) [SEC-13].
+   */
+  private async assertNotLastPrivileged(
+    c: IUserApp,
+    target: { id: string; role: string },
+  ) {
+    if (target.role !== EUserRole.ADMIN && target.role !== EUserRole.SYSTEM) {
+      return;
+    }
+    const [others] = await c.db
+      .select({ n: count() })
+      .from(SUser)
+      .where(
+        and(
+          eq(
+            SUser.role,
+            target.role === EUserRole.ADMIN ? EUserRole.ADMIN : EUserRole.SYSTEM,
+          ),
+          eq(SUser.isDeleted, false),
+          ne(SUser.id, target.id),
+        ),
+      );
+    if (Number(others?.n ?? 0) === 0) {
+      throw status("Conflict", {
+        message:
+          target.role === EUserRole.ADMIN
+            ? "Cannot delete the last active ADMIN"
+            : "Cannot delete the last active SYSTEM user",
+      });
+    }
+  }
+
   override async remove(c: IUserApp, id: string) {
     const target = await this.loadTarget(c, id);
 
     if (!UtilUserPolicy.canManage(this.actor(c), target)) {
       throw status("Forbidden");
     }
+
+    await this.assertNotLastPrivileged(c, target);
 
     const res = await super.remove(c, id);
     await ServiceSession.revokeUserSessions(c, id);

@@ -38,6 +38,10 @@ describe("SEC-11: ADMIN cannot delete SYSTEM users or other ADMINs", () => {
   const removeAs = async (actorRole: EUserRole, targetRole: EUserRole) => {
     const actor = await createTestUser(actorRole);
     const target = await createTestUser(targetRole);
+    if (targetRole === EUserRole.ADMIN) {
+      // [SEC-13] the last ADMIN can never be deleted.
+      await createTestUser(EUserRole.ADMIN);
+    }
     return (
       await api.user({ id: target.user.id }).delete({}, { headers: actor.headers })
     ).status;
@@ -69,6 +73,10 @@ describe("SEC-12: user management policy matrix", () => {
         it(`[SEC-12] ${actorRole} → ${action} ${targetRole} → ${status}`, async () => {
           const actor = await createTestUser(actorRole);
           const target = await createTestUser(targetRole);
+          if (action === "remove" && targetRole === EUserRole.ADMIN) {
+            // [SEC-13] the last ADMIN can never be deleted.
+            await createTestUser(EUserRole.ADMIN);
+          }
           const res = await perform(action, actor.headers, target.user.id);
           expect(res.status).toBe(status);
         });

@@ -4,6 +4,7 @@ import { status } from "elysia";
 import { eq, and } from "drizzle-orm";
 import { IUserApp, ServiceBase } from "bedest-core";
 import { IPolicyActor, UtilUserPolicy } from "../utils/UtilUserPolicy";
+import { UtilEmail } from "../utils/UtilEmail";
 import ServiceSession from "@f/session/services/ServiceSession";
 
 class ServiceUser extends ServiceBase<typeof SUser, string> {
@@ -47,6 +48,7 @@ class ServiceUser extends ServiceBase<typeof SUser, string> {
 
     return super.create(c, {
       ...data,
+      email: UtilEmail.normalize(data.email),
       password: hash,
     });
   }

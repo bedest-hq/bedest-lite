@@ -1,5 +1,6 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { SUser } from "../../user/schemas/SUser";
+import { UtilEmail } from "@f/user/utils/UtilEmail";
 import ServiceSession from "@/features/session/services/ServiceSession";
 import ServiceSystem from "@f/system/services/ServiceSystem";
 import { EUserRole } from "@f/user/enums/EUserRole";
@@ -25,6 +26,7 @@ class ServiceAuth {
   }
 
   async login(c: IApp, data: { email: string; password: string }) {
+    const email = UtilEmail.normalize(data.email);
     const [user] = await c.db
       .select({
         userId: SUser.id,
@@ -32,7 +34,13 @@ class ServiceAuth {
         password: SUser.password,
       })
       .from(SUser)
-      .where(and(eq(SUser.email, data.email), eq(SUser.isDeleted, false)))
+      .where(
+        and(
+          // Matches the unique index on lower(email) [SEC-21].
+          sql`lower(${SUser.email}) = ${email}`,
+          eq(SUser.isDeleted, false),
+        ),
+      )
       .limit(1);
 
     if (!user) {
@@ -69,7 +77,7 @@ class ServiceAuth {
         action: "LOGIN",
         entity: "auth",
         entityId: user.userId,
-        payload: { email: data.email },
+        payload: { email },
       },
     );
 

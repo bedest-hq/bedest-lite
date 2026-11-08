@@ -50,6 +50,13 @@
       "when": 1794167257946,
       "tag": "0006_system_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794167972262,
+      "tag": "0007_partial_index_column_refs",
+      "breakpoints": true
     }
   ]
 }

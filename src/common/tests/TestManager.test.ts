@@ -17,7 +17,7 @@ import { EUserRole } from "@/features/user/enums/EUserRole";
 import Elysia from "elysia";
 import jwt from "@elysiajs/jwt";
 import { password } from "bun";
-import { SYSTEM_UUID } from "../constants";
+import { SSession } from "@f/session/schemas/SSession";
 
 const EnvManager = await import("@/infrastructure/env/EnvManager");
 const DbManager = await import("@/infrastructure/database/DbManager");
@@ -98,6 +98,7 @@ spyOn(DbManager.default, "get").mockReturnValue(
 const RateLimitManager = await import(
   "@/infrastructure/ratelimit/RateLimitManager"
 );
+const ServiceSession = await import("@f/session/services/ServiceSession");
 
 const test_signer = new Elysia().use(
   jwt({
@@ -115,9 +116,20 @@ export const testHeaders = async (user = test_user) => {
     throw new Error("Test user is not initialized yet!");
   }
 
+  // A real session row: the access path verifies that the session exists
+  // [SEC-08].
+  const [session] = await test_db
+    .insert(SSession)
+    .values({
+      userId: user.id,
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    })
+    .returning({ id: SSession.id });
+
   const token = await test_signer.decorator.accessJwt.sign({
     userId: user.id,
-    sessionId: SYSTEM_UUID,
+    sessionId: session.id,
     role: user.role,
   });
 
@@ -174,6 +186,7 @@ beforeEach(async () => {
 
 afterEach(async () => {
   await RateLimitManager.default.resetAll();
+  ServiceSession.default.clearCache();
   await test_db.execute(sql`
     DO $$ DECLARE
       r RECORD;

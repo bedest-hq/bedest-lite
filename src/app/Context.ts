@@ -6,6 +6,7 @@ import DbManager from "@/infrastructure/database/DbManager";
 import EnvManager from "@/infrastructure/env/EnvManager";
 import { UtilClientIp } from "@/infrastructure/ratelimit/UtilClientIp";
 import ServiceSystem from "@f/system/services/ServiceSystem";
+import ServiceSession from "@f/session/services/ServiceSession";
 import { UtilAuth } from "@f/auth/utils/UtilAuth";
 import { VJwtPayload } from "@f/auth/validations/VJwtPayload";
 import { PluginAudit } from "@f/system/plugins/PluginAudit";
@@ -58,6 +59,12 @@ class Context {
           const db = DbManager.get();
           const token = cookie.accessToken.value;
           const payload = await UtilAuth.validateAccessToken(accessJwt, token);
+
+          // A valid signature is not enough: the session must still exist
+          // (logout, revocation, deleted user) [SEC-08].
+          if (!(await ServiceSession.isActive({ db, nowDatetime }, payload.sessionId))) {
+            throw status("Unauthorized");
+          }
 
           if (
             ServiceSystem.getMaintenance() &&

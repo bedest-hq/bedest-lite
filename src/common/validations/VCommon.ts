@@ -47,6 +47,11 @@ export const VEnv = t.Object({
   REFRESH_KEY: t.String({ minLength: 32 }),
 
   PORT: t.Number(),
+  // Largest accepted request body (default 10 MiB) [SEC-18].
+  MAX_REQUEST_BODY_BYTES: Type.Integer({
+    minimum: 1024,
+    default: 10 * 1024 * 1024,
+  }),
   // pino level; default info (silent when NODE_ENV=test).
   LOG_LEVEL: t.Optional(
     t.Union([

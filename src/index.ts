@@ -12,6 +12,12 @@ const env = EnvManager.init();
 
 DbManager.init(env);
 
+// Superuser connections silently ignore the two-role model.
+const roleWarning = await DbManager.verifyRuntimeRole(
+  DbManager.get(),
+  env.NODE_ENV,
+);
+
 const { Router } = await import("./app/Router");
 
 export const app = new Elysia()
@@ -30,7 +36,10 @@ if (app.server) {
   WsManager.init(app.server);
 }
 
-for (const warning of EnvManager.getWarnings()) {
+for (const warning of [
+  ...EnvManager.getWarnings(),
+  ...(roleWarning ? [roleWarning] : []),
+]) {
   logger.warn(warning);
 }
 

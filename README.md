@@ -155,6 +155,24 @@ bun run dev
 
 Access the Swagger documentation at: `http://localhost:3000/api/docs`
 
+## Database roles
+
+bedest-lite has no tenants and no row-level security, but it uses the same two-role model as bedest so that the API cannot rewrite history (audit rows are append-only) or change the schema:
+
+| Role | Used by | Privileges |
+| --- | --- | --- |
+| Schema owner (`DATABASE_MIGRATION_USER` / `DATABASE_MIGRATION_PASSWORD`) | `drizzle-kit`, the migration runner and maintenance scripts (`RedactAuditLogs`) | Owns the tables; runs DDL. |
+| `bedest_app` (group role, `NOLOGIN NOSUPERUSER NOBYPASSRLS`) | — | `SELECT, INSERT, UPDATE, DELETE` on all tables, `SELECT, INSERT` only on `system_audit_logs`; future tables via default privileges (migration `0002_app_role_grants`). |
+| Runtime login (`DATABASE_USER` / `DATABASE_PASSWORD`) | The API server | Member of `bedest_app`, nothing else. |
+
+Provision the roles once per environment with superuser credentials, then migrate as the owner:
+
+```bash
+DATABASE_ADMIN_USER=postgres DATABASE_ADMIN_PASSWORD=... bun run src/scripts/database/ProvisionRoles.ts
+```
+
+`ProvisionRoles` is idempotent and can be re-run to rotate the password. At boot the server refuses to start in `production` as a superuser (warning in other environments). In tests the application connection runs as `bedest_app` too.
+
 ## Testing
 
 Bedest Lite uses **PGlite** for lightning-fast, isolated database tests. Tests run against an in-memory instance, allowing for safe mutations, real schema checks, and instant feedback without requiring a running Docker container.

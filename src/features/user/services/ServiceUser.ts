@@ -53,8 +53,9 @@ class ServiceUser extends ServiceBase<typeof SUser, string> {
     });
   }
 
-  async getAll(c: IUserApp, query: { limit: number; page: number }) {
-    return super.getAll(c, query, {
+  /** Tenant users without credentials (the base getAll takes columns). */
+  async list(c: IUserApp, query: { limit: number; page: number }) {
+    return this.getAll(c, query, {
       id: SUser.id,
       name: SUser.name,
       role: SUser.role,
@@ -63,8 +64,9 @@ class ServiceUser extends ServiceBase<typeof SUser, string> {
     });
   }
 
-  async getById(c: IUserApp, id: string) {
-    return super.getById(c, id, {
+  /** One user profile without credentials. */
+  async getProfile(c: IUserApp, id: string) {
+    return this.getById(c, id, {
       name: SUser.name,
       role: SUser.role,
       email: SUser.email,

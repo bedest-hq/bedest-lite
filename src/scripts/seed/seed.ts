@@ -1,33 +1,146 @@
-import { EUserRole } from "../../features/user/enums/EUserRole";
-import {
-  SYSTEM_EMAIL,
-  SYSTEM_USER_NAME,
-  SYSTEM_USER_PASSWORD,
-} from "../../common/constants";
-import ServiceUser from "@/features/user/services/ServiceUser";
-import ServiceOrganization from "@/features/organization/services/ServiceOrganization";
+import { and, eq } from "drizzle-orm";
+import { t } from "elysia";
+import { TDb } from "bedest-core";
+import { TEnv } from "@/common/types/TEnv";
+import { SYSTEM_USER_NAME } from "@/common/constants";
+import { EUserRole } from "@f/user/enums/EUserRole";
+import { SUser } from "@f/user/schemas/SUser";
+import { SOrganization } from "@f/organization/schemas/SOrganization";
+import EnvManager from "@/infrastructure/env/EnvManager";
 import DbManager from "@/infrastructure/database/DbManager";
-import ContextBuilder from "../context/ContextBuilder";
+import { UtilSeedPassword } from "./UtilSeedPassword";
 
-export async function seed() {
-  const { userContext } = ContextBuilder.build();
+/** Script-only variables, validated here and never part of the server VEnv. */
+export const VSeedEnv = t.Object({
+  SEED_SYSTEM_EMAIL: t.String({ format: "email", maxLength: 254 }),
+  SEED_SYSTEM_PASSWORD: t.Optional(t.String({ minLength: 12, maxLength: 128 })),
+  ALLOW_PRODUCTION_SEED: t.Optional(t.Boolean()),
+});
 
-  await ServiceUser.create(userContext, {
-    name: SYSTEM_USER_NAME,
-    email: SYSTEM_EMAIL,
-    password: SYSTEM_USER_PASSWORD,
-    role: EUserRole.SYSTEM,
-  });
-
-  await ServiceOrganization.create(userContext, {
-    displayName: "Acme Corp",
-    fullName: "Acme Corporation Inc.",
-    phone: "+1-800-555-0199",
-    address: "123 Acme Way, Cityville, ST 12345",
-    links: ["https://twitter.com/acmecorp", "https://linkedin.com/company/acmecorp"],
-  });
-
-  await DbManager.shutdown();
+export interface ISeedOptions {
+  nodeEnv: TEnv["NODE_ENV"];
+  seedEnv: {
+    SEED_SYSTEM_EMAIL: string;
+    SEED_SYSTEM_PASSWORD?: string;
+    ALLOW_PRODUCTION_SEED?: boolean;
+  };
+  /** Writes one line to the operator's terminal. */
+  print: (line: string) => void;
+  now?: Date;
 }
 
-await seed();
+export interface ISeedResult {
+  created: boolean;
+  generatedPassword?: string;
+}
+
+/**
+ * Creates the SYSTEM user and (when none exists) a sample organization
+ * profile. Idempotent: when an active SYSTEM user already exists nothing is
+ * written.
+ */
+export async function runSeed(
+  db: TDb,
+  opts: ISeedOptions,
+): Promise<ISeedResult> {
+  if (
+    opts.nodeEnv === "production" &&
+    opts.seedEnv.ALLOW_PRODUCTION_SEED !== true
+  ) {
+    throw new Error(
+      "Refusing to seed with NODE_ENV=production. Set ALLOW_PRODUCTION_SEED=true to override.",
+    );
+  }
+
+  const now = opts.now ?? new Date();
+  const generatedPassword = opts.seedEnv.SEED_SYSTEM_PASSWORD
+    ? undefined
+    : UtilSeedPassword.generate(24);
+  const plainPassword = opts.seedEnv.SEED_SYSTEM_PASSWORD ?? generatedPassword;
+  if (!plainPassword) {
+    throw new Error("Unable to determine the SYSTEM user password.");
+  }
+  const passwordHash = await Bun.password.hash(plainPassword);
+  const email = opts.seedEnv.SEED_SYSTEM_EMAIL;
+
+  const created = await db.transaction(async (tx) => {
+    const [existingSystemUser] = await tx
+      .select({ id: SUser.id })
+      .from(SUser)
+      .where(and(eq(SUser.role, EUserRole.SYSTEM), eq(SUser.isDeleted, false)))
+      .limit(1);
+
+    if (existingSystemUser) {
+      return false;
+    }
+
+    await tx.insert(SUser).values({
+      name: SYSTEM_USER_NAME,
+      email,
+      password: passwordHash,
+      role: EUserRole.SYSTEM,
+      createdAt: now,
+    });
+
+    const [existingOrganization] = await tx
+      .select({ id: SOrganization.id })
+      .from(SOrganization)
+      .where(eq(SOrganization.isDeleted, false))
+      .limit(1);
+
+    if (!existingOrganization) {
+      await tx.insert(SOrganization).values({
+        displayName: "Acme Corp",
+        fullName: "Acme Corporation Inc.",
+        phone: "+1-800-555-0199",
+        address: "123 Acme Way, Cityville, ST 12345",
+        links: [
+          "https://twitter.com/acmecorp",
+          "https://linkedin.com/company/acmecorp",
+        ],
+        createdAt: now,
+      });
+    }
+
+    return true;
+  });
+
+  if (!created) {
+    opts.print("SYSTEM user already exists; nothing to seed.");
+    return { created: false };
+  }
+
+  opts.print(`SYSTEM user created: ${email}`);
+  if (generatedPassword) {
+    opts.print(
+      `WARNING: generated SYSTEM password (shown once, change it after the first login): ${generatedPassword}`,
+    );
+  }
+  return { created: true, generatedPassword };
+}
+
+async function main() {
+  const env = EnvManager.init();
+  const seedEnv = EnvManager.parseScript(VSeedEnv);
+  DbManager.init(env);
+  try {
+    await runSeed(DbManager.get(), {
+      nodeEnv: env.NODE_ENV,
+      seedEnv,
+      print: (line) => process.stdout.write(`${line}\n`),
+    });
+  } finally {
+    await DbManager.shutdown();
+  }
+}
+
+if (import.meta.main) {
+  try {
+    await main();
+  } catch (err) {
+    process.stderr.write(
+      `Seed failed: ${err instanceof Error ? err.message : String(err)}\n`,
+    );
+    process.exit(1);
+  }
+}

@@ -67,7 +67,7 @@ class Context {
           }
 
           if (
-            ServiceSystem.getMaintenance() &&
+            (await ServiceSystem.getMaintenance({ db, nowDatetime })) &&
             payload.role !== EUserRole.SYSTEM
           ) {
             throw status("Service Unavailable");

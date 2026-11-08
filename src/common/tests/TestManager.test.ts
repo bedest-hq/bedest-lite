@@ -135,6 +135,7 @@ const RateLimitManager = await import(
   "@/infrastructure/ratelimit/RateLimitManager"
 );
 const ServiceSession = await import("@f/session/services/ServiceSession");
+const ServiceSystem = await import("@f/system/services/ServiceSystem");
 
 const test_signer = new Elysia().use(
   jwt({
@@ -223,6 +224,7 @@ beforeEach(async () => {
 afterEach(async () => {
   await RateLimitManager.default.resetAll();
   ServiceSession.default.clearCache();
+  ServiceSystem.default.invalidate();
   await test_db.execute(sql`
     DO $$ DECLARE
       r RECORD;

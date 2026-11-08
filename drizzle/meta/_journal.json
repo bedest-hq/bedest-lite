@@ -43,6 +43,13 @@
       "when": 1794166532203,
       "tag": "0005_storage_status",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794167257946,
+      "tag": "0006_system_settings",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,11 @@
-import { pgTable, varchar, text, jsonb, uuid } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  varchar,
+  text,
+  jsonb,
+  uuid,
+  boolean,
+} from "drizzle-orm/pg-core";
 import { baseColumns, UtilDbSchema } from "bedest-core";
 import { SStorage } from "@f/storage/schemas/SStorage";
 
@@ -24,6 +31,12 @@ export const SOrganization = pgTable(
     timezone: varchar({ length: 255 }).default("UTC"),
     logoId: uuid().references(() => SStorage.id),
     links: jsonb().$type<string[]>(),
+    // Always true; with the unique index below at most one active row can
+    // exist [BUG-17].
+    singleton: boolean().notNull().default(true),
   },
-  (t) => [UtilDbSchema.activeIndex("idx_organizations_active", t.id)],
+  (t) => [
+    UtilDbSchema.activeIndex("idx_organizations_active", t.id),
+    UtilDbSchema.activeUniqueIndex("idx_organizations_singleton", t.singleton),
+  ],
 );

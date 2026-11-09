@@ -1,13 +1,13 @@
 import { describe, it, expect } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import { testHeaders } from "@/common/tests/TestManager.test";
+import { testSystemHeaders } from "@/common/tests/TestManager.test";
 import { RouterOrganization } from "./RouterOrganization";
 
 const api = treaty(RouterOrganization);
 
 describe("RouterOrganization", () => {
   it("Get organization profile", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
 
     const res = await api.organization.get({ headers });
 
@@ -28,7 +28,7 @@ describe("RouterOrganization", () => {
       city: null,
       state: null,
       zipCode: null,
-      taxId: null,
+      // taxId is not public unless ORGANIZATION_PUBLIC_TAX_ID=true [BUG-17].
       currency: "USD",
       timezone: "UTC",
       links: [
@@ -39,7 +39,7 @@ describe("RouterOrganization", () => {
   });
 
   it("Update organization profile", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
 
     const res = await api.organization.put(
       {

@@ -1,7 +1,12 @@
 import { describe, it, expect, spyOn, mock } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import { testHeaders } from "@/common/tests/TestManager.test";
+import { eq } from "drizzle-orm";
+import { test_db, testHeaders } from "@/common/tests/TestManager.test";
+import { SStorage } from "../schemas/SStorage";
 import { RouterStorage } from "./RouterStorage";
+
+/** The upload route accepts at most 5 MiB (RouterStorage maxSize). */
+const UPLOAD_LIMIT_BYTES = 5 * 1024 * 1024;
 
 const StorageManager = await import("@/infrastructure/storage/StorageManager");
 
@@ -14,7 +19,11 @@ spyOn(StorageManager.default, "delete").mockImplementation(
 );
 
 spyOn(StorageManager.default, "download").mockImplementation(
-  mock(() => Promise.resolve(new Blob(["mock file data"]))),
+  // Providers stream objects [BUG-18].
+  mock(() => {
+    const blob = new Blob(["mock file data"]);
+    return Promise.resolve({ stream: blob.stream(), contentLength: blob.size });
+  }),
 );
 
 const bytes = new Uint8Array([
@@ -41,7 +50,8 @@ describe("RouterStorage", () => {
     expect(res.data).toHaveProperty("key");
   });
 
-  it("Rejects files larger than limit or invalid type", async () => {
+  // [TST-04] One test per rule (the old test only checked the type).
+  it("[TST-04] rejects a file type outside the allowlist → 422", async () => {
     const headers = await testHeaders();
 
     const dummyFile = new File(["fake content"], "malicious.exe", {
@@ -51,6 +61,24 @@ describe("RouterStorage", () => {
     const res = await api.storage.upload.post({ file: dummyFile }, { headers });
 
     expect(res.status).toBe(422);
+  });
+
+  it("[TST-04] rejects a file larger than the 5 MiB upload limit → 422 and stores nothing", async () => {
+    const headers = await testHeaders();
+    const tooBig = new Uint8Array(UPLOAD_LIMIT_BYTES + 1);
+    tooBig.set(bytes);
+
+    const dummyFile = new File([tooBig], "too-big.png", { type: "image/png" });
+
+    const res = await api.storage.upload.post({ file: dummyFile }, { headers });
+
+    expect(res.status).toBe(422);
+    expect(
+      await test_db
+        .select({ id: SStorage.id })
+        .from(SStorage)
+        .where(eq(SStorage.name, "too-big.png")),
+    ).toEqual([]);
   });
 
   it("List Files", async () => {

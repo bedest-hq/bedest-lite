@@ -6,10 +6,10 @@
 
 <p align="center">
   <strong>
-    A blazing-fast, strictly typed backend foundation built for custom web apps, freelance projects, and boutique websites.
+    The single-tenant, strictly typed backend foundation of the Bedest family.
   </strong>
   <br/>
-  Powered by <b>B</b>un, <b>E</b>lysiaJS, and <b>D</b>rizzle ORM.
+  Powered by <b>B</b>un, <b>E</b>lysiaJS, and <b>D</b>rizzle ORM on PostgreSQL.
 </p>
 
 <p align="center">
@@ -22,173 +22,303 @@
 
 ---
 
-## Architectural Philosophy
+## Contents
 
-Bedest Lite is the streamlined, single-tenant version of the original Bedest boilerplate. It is engineered to prioritize **Developer Experience (DX) and execution speed** for custom projects that don't require complex B2B SaaS overhead. It enforces a **Strictly Typed** environment, eliminating `any` types in favor of robust runtime validation, while providing enterprise-grade security, storage, and authentication out of the box.
+- [What you get](#what-you-get)
+- [Folder structure](#folder-structure--nomenclature)
+- [Technical highlights](#technical-highlights)
+- [Quick start](#quick-start)
+- [Environment variables](#environment-variables)
+- [Security model](#security-model)
+- [Database roles](#database-roles)
+- [Deployment](#deployment)
+- [Testing](#testing)
+- [Scripts](#scripts)
+- [Upgrading to this release](#upgrading-to-this-release)
 
-The core abstractions (base services, utilities, guards, interfaces) live in a separate, publicly available package: [`bedest-core`](https://github.com/bedesthq/bedest-core). 
+## What you get
 
-### Bedest vs. Bedest Lite
+Bedest Lite is the single-tenant sibling of [Bedest](https://github.com/bedest-hq/bedest): the same accounts, audit, storage and operations, without tenants, row-level security, plans or billing — for internal tools, agency projects and ordinary web applications. The code is strictly typed (no `any`, TypeBox validation on every input). The reusable building blocks live in [`bedest-core`](https://github.com/bedest-hq/bedest-core).
 
-* **Bedest (Original):** Designed for massive B2B SaaS platforms. It includes Multi-tenancy, Row-Level Security (RLS) data isolation, subscription plan management, and complex cross-tenant guardrails.
-* **Bedest Lite:** Strips away the multi-tenant complexity. It features a flat, blazing-fast database architecture, making it the ultimate starter kit for portfolios, agency work, internal tools, and standard single-tenant web applications.
+* **Accounts**: HttpOnly cookie sessions with refresh-token rotation and reuse detection, session list and revocation, account lockout, password reset and invitations by e-mail.
+* **Append-only audit trail**: routes declare `audit: { entity, action? }`; rows are written after the response with secrets scrubbed, and the database refuses `UPDATE`/`DELETE` on `system_audit_logs`.
+* **Real time**: WebSocket notifications (`/api/v1/notifications/live`); sockets close when their session is revoked or their access token expires.
+* **Storage**: S3/MinIO or local disk, JPEG/PNG/WebP/PDF up to 5 MiB, streamed downloads.
+* **Organization profile**: one organization record with a public `GET /api/v1/organization`.
+* **Operations**: health and readiness probes, graceful shutdown, request ids and one access-log line per request, background jobs, a migration runner.
 
-### Why Bedest Lite?
-
-* **No SaaS Overhead**: Focus directly on your business logic without worrying about `tenantId` mapping, subscription checks, or complex RLS policies.
-* **Bulletproof Error Handling**: A centralized `ErrorHandler` with a recursive extraction logic that unmasks deep-nested Drizzle/Postgres errors into standard, frontend-friendly JSON.
-* **Immutable Audit Trail**: An Aspect-Oriented, macro-driven system logging mechanism that automatically tracks "who did what" with 100% type safety.
-* **Production-Ready Auth**: JWT-based Access/Refresh flow utilizing highly secure, HTTP-only, SameSite `lax` cookies and integrated Rate Limiting.
-
----
-
-## Core Features
-
-* **Ultra Fast**: Leveraging the Bun runtime and ElysiaJS for microsecond response times.
-* **Dual-Token Auth**: Secure Access/Refresh JWT flow to keep user sessions safe and scalable.
-* **Real-Time Notification Engine**: Native Elysia WebSocket implementation (`/notifications/live`) for pushing live payloads directly to users.
-* **Generic Service Pattern**: Extensible `ServiceBase` class (from `bedest-core`) to eliminate repetitive CRUD and pagination logic.
-* **Lightning Fast Tests**: Isolated database testing using **PGlite** (in-memory Postgres). No external DB container is required for CI/CD pipelines.
-* **Hybrid Storage Engine**: Zero-copy file uploads with AWS S3 / Minio support, complete with file streaming for viewing and downloading, plus a seamless Local Storage fallback.
-
----
+Bedest Lite runs as a single node: rate limits are kept in memory, lockout counters in the database, and WebSocket events are delivered by the node that holds the socket.
 
 ## Folder Structure & Nomenclature
 
-Bedest Lite follows a clean, Domain-Driven Design (DDD) modular structure.
-
-* **S** → Database Schemas (e.g., `SUser`, `SStorage`)
-* **V** → Validation Objects (e.g., `VId`, `VEmail`, `VString`)
-* **E** → Enums (e.g., `EUserRole`)
-* **T** → Types (e.g., `TEnv`)
+* **S** → Database schemas (e.g. `SUser`, `SStorage`)
+* **V** → Validation objects (e.g. `VEmail`, `VPassword`)
+* **E** → Enums (e.g. `EUserRole`)
+* **T** → Types (e.g. `TEnv`)
 
 ```plaintext
 src/
-├── app/               # App Router, Context Builder (JWT, Auth Injection), Swagger
-├── common/            # Shared constants, types, and project-level validations (VEnv)
-├── features/          # Bounded Contexts (Auth, Notification, Session, Storage, System, User)
+├── app/               # App factory (createApp), router, request context, CSRF/CORS/security plugins
+├── common/            # Shared types, utilities and validations (VEnv); TestManager for tests
+├── features/          # auth, health, notification, organization, session, storage, system, user
 │   └── [module]/
-│       ├── enums/     # Domain-specific enums
-│       ├── routers/   # Elysia routes & validation schemas
-│       ├── schemas/   # Drizzle table definitions
-│       └── services/  # Core business logic & database interactions
-├── infrastructure/    # Database Manager, Env Validation, Error Handling, Logger, Storage, WebSockets
-└── scripts/           # DB Reset, Seed execution, Storage teardown
-
+│       ├── enums/     # Domain enums (pg enums)
+│       ├── routers/   # Elysia routes and their TypeBox schemas
+│       ├── schemas/   # Drizzle tables and indexes
+│       └── services/  # Business logic and database access
+├── infrastructure/    # Database, env, errors, jobs, logger, mail, rate limiting, storage, WebSockets
+└── scripts/           # Migrations, role provisioning, seed, resets, audit redaction
 ```
 
 ---
 
 ## Technical Highlights
 
-### bedest-core Integration
-
-Even though Bedest Lite is single-tenant, it securely leverages the generic foundations of [`bedest-core`](https://github.com/bedesthq/bedest-core):
+### bedest-core
 
 | Export | Description |
 | --- | --- |
-| `ServiceBase` | Generic CRUD base class providing automated pagination and basic queries |
-| `UtilRouter` | `defPaginatedSchema` — typed paginated response wrapper |
-| `UtilAudit` | `scrub()` — redacts sensitive keys before audit log persistence |
-| `MacroRoleGuard` | Elysia macro for role-based access control (`SYSTEM`, `ADMIN`, `USER`) |
-| `baseColumns` | Standard `id`, `isDeleted`, `createdAt`, `deletedAt` Drizzle columns |
-| `IApp`, `IUserApp` | Context interfaces used by every service method |
-| `VId`, `VEmail`, `VString`, `VQuery` | Common Elysia/TypeBox validation primitives |
+| `ServiceBase` | Generic CRUD with pagination and soft delete |
+| `UtilRouter` | `defPaginatedSchema` — typed paginated responses |
+| `UtilAudit` | `scrub()` — redacts secrets (password, token, secret, cookie, session, …) before persistence |
+| `MacroRoleGuard` | Elysia macro for roles (`SYSTEM`, `ADMIN`, `USER`) |
+| `baseColumns` | `id`, `isDeleted`, `createdAt`, `updatedAt`, `deletedAt` |
+| `IApp`, `IUserApp`, `ISession` | Context interfaces of every service method |
+| `TDbOrTx` | A database handle or a transaction |
+| `VId`, `VEmail`, `VString`, `VStr(max)`, `VQuery` | Validation primitives (`VStr(n)` bounds strings to their `varchar(n)` column) |
 
-### Semantic Status Codes & Guards
+### Error responses
 
-The API follows strict REST standards enforced by Elysia macros:
+Every error has the same body:
 
-* `403 Forbidden`: Returned via `MacroRoleGuard` for insufficient RBAC roles.
-* `503 Service Unavailable`: Used during Maintenance Mode to signal temporary downtime.
-* `409 Conflict`: Maps unique constraint violations (like duplicate emails) dynamically.
-* `400 Bad Request`: Handled natively for validation errors via TypeBox.
+```json
+{ "error": "Bad Request", "message": "Validation failed", "details": [{ "field": "email", "message": "Expected string to match 'email' format" }] }
+```
 
-### Hybrid Storage Strategy
+`error` is the HTTP reason phrase, `message` an optional explanation and `details` the invalid fields of a validation error. Throw HTTP errors with `UtilHttp.fail(status, message?, details?)`; the global `ErrorHandler` maps everything else (unknown routes, malformed bodies, Postgres errors such as `23505` → 409, `23503` → 400, `22001` → 400) to the same shape. Unexpected errors answer `{ "error": "Internal Server Error", "requestId": "…" }` only — the `requestId` matches the access log line. Clients get the type as `IApiError`.
 
-A unified `StorageManager` dynamically routes file uploads to AWS S3 (or any S3-compatible service like Minio) if credentials are provided, gracefully falling back to Node.js Local Storage. It handles files using a zero-copy approach (`Buffer.from` over `ArrayBuffer`), ensuring high-performance I/O, and provides native HTTP header parsing for safe file downloads (`Content-Disposition: attachment`).
+### Status codes and guards
 
-### Aspect-Oriented Audit Trail
+* `401` — missing, expired or revoked session (also locked accounts, with the same body as a wrong password).
+* `403 Forbidden` — role (`MacroRoleGuard`) or CSRF rejection.
+* `409 Conflict` — unique violations (e.g. an e-mail already in use), files in use, self-lockout protections.
+* `429 Too Many Requests` — rate limits.
+* `503 Service Unavailable` — maintenance mode (except SYSTEM users) and readiness failures.
 
-Bedest Lite includes a macro-driven audit logging system. Instead of littering business logic with log statements, developers simply flag a route with `audit: true` or provide a custom configuration (`audit: { action: 'USER_BANNED' }`). The `PluginAudit` middleware automatically scrubs sensitive keys (passwords, tokens) using `UtilAudit.scrub()` and persists the user action into the database seamlessly.
+### Real-time notifications
+
+`WsManager` keeps one registry entry per connection; `ServiceNotification` persists events and pushes them to a user. A socket closes with `4001` when its access token expires (the client refreshes and reconnects) and with `1008` when its session is revoked. Notifications are best-effort: a failed push never fails the calling request.
+
+### Storage
+
+`StorageManager` uses S3 (any S3-compatible store; `S3_FORCE_PATH_STYLE=true` for MinIO) when the `S3_*` credentials are set, otherwise `LOCAL_STORAGE_PATH`. Uploads accept JPEG, PNG, WebP and PDF up to 5 MiB; downloads are streamed from the provider (never buffered). Only the uploader or an ADMIN deletes a file, never while it is an avatar; soft-deleted files are purged after `STORAGE_PURGE_AFTER_DAYS`.
+
+### Audit trail
+
+```ts
+.put("/:id", handler, { audit: { entity: "user" } })
+.delete("/sessions/:id", handler, { audit: { entity: "session", action: "SESSION_REVOKED" } })
+```
+
+`PluginAudit` writes one row per mutating request after the response (failed requests as `FAILED_<METHOD>`), scrubbing secrets from the body with `UtilAudit.scrub()`. Security events (`LOGIN_FAILED`, `LOGIN_LOCKED`, `LOGOUT`, `PASSWORD_CHANGED`, `PASSWORD_RESET`, `ROLE_CHANGED`, `SESSION_REVOKED`, `INVITE_ACCEPTED`) are written by the services. Rows are append-only: the application role has only `SELECT, INSERT`, and a trigger rejects `UPDATE`/`DELETE` for every role unless a maintenance transaction sets `app.audit_maintenance` (used by `RedactAuditLogs`).
+
+### Accounts
+
+* **Sessions** — `GET /auth/sessions` (with `current`), `DELETE /auth/sessions/:id`, `POST /auth/logout-all { includeCurrent }`. A session records IP, user agent and `lastUsedAt` (written at most every 5 minutes).
+* **Lockout** — 5 failed logins for one e-mail within 15 minutes lock it for 15 minutes; a locked attempt costs the same as a wrong password and gets the same 401.
+* **Password reset** — `POST /auth/password/forgot { email }` always answers `202`; the e-mail links to `APP_PUBLIC_URL/reset-password#token=…` (30 minutes, single use). `POST /auth/password/reset { token, password }` revokes every session of the user.
+* **Invitations** — `POST /user/invite { email, role, name? }` (ADMIN/SYSTEM) creates an `INVITED` user and e-mails `APP_PUBLIC_URL/accept-invite#token=…` (7 days); `POST /auth/invite/accept { token, name, password }` activates and signs in.
+
+Tokens travel in the URL fragment (never sent to servers) and only their SHA-256 is stored.
+
+### Organization
+
+`GET /api/v1/organization` is public and omits `taxId` unless `ORGANIZATION_PUBLIC_TAX_ID=true`; `PUT /api/v1/organization` (ADMIN/SYSTEM) creates or updates the single organization record.
+
+### Background jobs
+
+When `JOBS_ENABLED` is true: `sessions.cleanupExpired` (hourly), `storage.purgeDeleted` (daily), `storage.cleanupPending` (hourly), `tokens.cleanup` (hourly; rotated refresh tokens and used/expired account tokens), `notifications.retention` (daily, `NOTIFICATION_RETENTION_DAYS`) and `loginAttempts.cleanup` (hourly). Each run holds a Postgres advisory lock.
 
 ---
 
 ## Quick Start
 
-### Installation
+Requirements: Bun **1.2.20** or newer (1.2.20 is pinned in the Dockerfile and CI and matches `bedest-core`'s `engines.bun`) and PostgreSQL 16. When you upgrade Bun, re-pin the Dockerfile and CI together.
 
 ```bash
 bun install
-cp .env.example .env
-
+cp .env.example .env   # then adjust it
 ```
 
-### Database Setup
-
-Spin up a local PostgreSQL instance:
+Start PostgreSQL:
 
 ```bash
-docker run -d \
-  --name postgres \
-  -p 5432:5432 \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_DB=postgres \
+docker run -d --name postgres -p 5432:5432 \
+  -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres -e POSTGRES_DB=postgres \
   postgres:16-alpine
-
 ```
 
-Execute the full database setup (resets, generates, migrates, and seeds):
+Create the application role and login once (superuser credentials), then build the database:
 
 ```bash
-bun run dev:setup
-
+DATABASE_ADMIN_USER=postgres DATABASE_ADMIN_PASSWORD=postgres bun run src/scripts/database/ProvisionRoles.ts
+CONFIRM_RESET=<DATABASE_NAME> SEED_SYSTEM_EMAIL=admin@example.com bun run dev:setup
 ```
 
-### Development
+`dev:setup` resets the database and the local storage folder, migrates and seeds the SYSTEM user (`SEED_SYSTEM_EMAIL`; `SEED_SYSTEM_PASSWORD`, or a generated password printed once). The reset is refused when `NODE_ENV=production` and needs `CONFIRM_RESET` set to the database name (or `--yes` when a reset script is run directly).
 
 ```bash
 bun run dev
-
 ```
 
-Access the Swagger documentation at: `http://localhost:3000/api/docs`
+OpenAPI documentation: `http://localhost:3000/api/docs` (outside production, or with `ENABLE_API_DOCS=true`). With `MAIL_PROVIDER=console` nothing is e-mailed: each message is logged as one redacted line.
 
-## Testing
+---
 
-Bedest Lite uses **PGlite** for lightning-fast, isolated database tests. Tests run against an in-memory instance, allowing for safe mutations, real schema checks, and instant feedback without requiring a running Docker container.
+## Environment variables
 
-```bash
-bun run test
+The server validates its environment once at start (`EnvManager`, schema `VEnv`) and reports every problem in one error. Values marked *script* are read only by the named scripts.
 
-```
+| Variable | Required | Default | Meaning |
+| --- | --- | --- | --- |
+| `NODE_ENV` | yes | — | `development`, `test` or `production` (no default). |
+| `PORT` | yes | — | HTTP port. |
+| `CORS_ORIGINS` | in production | — | Allowed browser origins, comma-separated; no `*` in production. Also the CSRF allowlist. |
+| `CORS_ORIGIN` | no | — | Deprecated (read with a warning for one release); use `CORS_ORIGINS`. |
+| `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_NAME` | yes | — | PostgreSQL server and database. |
+| `DATABASE_USER`, `DATABASE_PASSWORD` | yes | — | Runtime login: a member of `bedest_app`, never a superuser. |
+| `DATABASE_SSL_MODE` | no | `verify-full` in production, else `disable` | `disable`, `require` (encrypted, certificate not verified) or `verify-full`. |
+| `DATABASE_SSL_CA` | no | — | CA for `verify-full`: PEM content or a file path. |
+| `SECRET_KEY`, `REFRESH_KEY` | yes | — | JWT secrets, ≥ 32 characters, different; `.env.example` placeholders are refused in production. |
+| `JWT_ISSUER` | no | `bedest` | `iss` claim set and checked on every token. |
+| `MAX_REQUEST_BODY_BYTES` | no | `10485760` | Largest request body. |
+| `LOG_LEVEL` | no | `info` (`silent` in test) | pino level. |
+| `ENABLE_API_DOCS` | no | `false` | Serve `/api/docs` in production too. |
+| `SHUTDOWN_TIMEOUT_MS` | no | `15000` | Deadline of the graceful shutdown. |
+| `TRUST_PROXY_HOPS` | no | `0` | Trusted reverse proxies; > 0 takes the client IP from `X-Forwarded-For`. |
+| `RATE_LIMIT_LOGIN_PER_MIN` | no | `5` | Logins per minute per IP + e-mail. |
+| `RATE_LIMIT_LOGIN_IP_PER_MIN` | no | `20` | Logins per minute per IP. |
+| `RATE_LIMIT_REFRESH_PER_MIN` | no | `30` | Refreshes per minute per IP. |
+| `RATE_LIMIT_PASSWORD_FORGOT_PER_MIN` | no | `5` | Password-reset requests per minute per IP. |
+| `RATE_LIMIT_PASSWORD_FORGOT_PER_HOUR` | no | `3` | Password-reset requests per hour per e-mail. |
+| `MAIL_PROVIDER` | yes | — | `smtp`, or `console` (development/test only; refused in production). |
+| `APP_PUBLIC_URL` | yes | — | Public URL of the web app (http/https, no query or fragment); e-mail links point here. |
+| `MAIL_FROM` | with smtp | — | Sender, e.g. `Bedest <no-reply@example.com>`. |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD` | with smtp | — | SMTP server and credentials. |
+| `SMTP_SECURE` | no | `false` | TLS from the first byte (port 465); `false` uses STARTTLS when offered. |
+| `LOCAL_STORAGE_PATH` | no | — | Local storage folder (used when S3 is not configured). |
+| `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` | no | — | S3 storage (all but the endpoint required to enable it). |
+| `S3_FORCE_PATH_STYLE` | no | `false` | Path-style URLs (MinIO); `false` = virtual-hosted (AWS). |
+| `JOBS_ENABLED` | no | `true` | Run the background jobs. |
+| `STORAGE_PURGE_AFTER_DAYS` | no | `30` | Days before a soft-deleted file's object is purged. |
+| `NOTIFICATION_RETENTION_DAYS` | no | `180` | Days before a notification is soft-deleted. |
+| `ORGANIZATION_PUBLIC_TAX_ID` | no | `false` | Include `taxId` in the public organization profile. |
+| `DATABASE_MIGRATION_USER`, `DATABASE_MIGRATION_PASSWORD` | *script* | runtime login | Schema owner for drizzle-kit, the migration runner and `RedactAuditLogs`. |
+| `DATABASE_MIGRATION_DIR` | *script* | `drizzle` | Migration folder of the runner. |
+| `DATABASE_ADMIN_USER`, `DATABASE_ADMIN_PASSWORD` | *script* | — | Superuser for `ProvisionRoles`. |
+| `SEED_SYSTEM_EMAIL` | *script* | — | E-mail of the seeded SYSTEM user (required by the seed). |
+| `SEED_SYSTEM_PASSWORD` | *script* | generated | Its password; a random one is printed when unset. |
+| `ALLOW_PRODUCTION_SEED` | *script* | `false` | Allow the seed with `NODE_ENV=production`. |
+| `CONFIRM_RESET` | *script* | — | Must equal `DATABASE_NAME` for `db:reset` / `dev:setup`. |
+
+---
+
+## Security model
+
+* **Cookies.** The access token (15 minutes) and the refresh token (7 days) are `HttpOnly` cookies, `Secure` in production. The access cookie is `SameSite=Lax` on `/`; the refresh cookie is `SameSite=Strict` and only sent to `/api/v1/auth`. Tokens are never returned in response bodies. JWTs carry and require `iss`, `aud` and `typ` (access vs refresh).
+* **Sessions.** Every access token names a session row; revoked sessions (logout, revocation, password change or reset, role change, user deletion) stop working at the next request and their sockets are closed. A refresh rotates the session in one transaction; reusing a rotated refresh token revokes the whole token family.
+* **CSRF.** In production a `POST`/`PUT`/`PATCH`/`DELETE` that carries an auth cookie must come from an origin in `CORS_ORIGINS` (`Origin`, or `Referer` without it); health checks are exempt. `SameSite` cookies are the second layer.
+* **CORS.** Only `CORS_ORIGINS`, with credentials; wildcards are refused in production.
+* **Database roles.** The API connects as a member of `bedest_app` (no DDL, append-only audit logs) and refuses to start as a superuser in production (see below).
+* **Roles.** `SYSTEM` > `ADMIN` > `USER`. SYSTEM may grant any role, ADMIN only `USER`; nobody changes their own role or removes the last SYSTEM user.
+* **Passwords.** New passwords need 12–128 characters; hashes use `Bun.password` (argon2id). Logins without credentials are rejected (no seeded fallbacks).
+* **Rate limits and lockout.** Login, refresh and password-reset requests are limited (see the `RATE_LIMIT_*` variables). Five failed logins lock an e-mail for 15 minutes; unknown e-mails are counted the same way.
+* **Account tokens.** Reset and invitation tokens are 256-bit, single-use, stored as SHA-256, and travel in URL fragments.
+* **Audit.** Append-only `system_audit_logs` (grants plus trigger); request bodies are scrubbed of secrets; failed logins record an e-mail hash, IP and user agent, never the password or address.
+* **Headers.** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `Cross-Origin-Opener-Policy: same-origin`, and `Strict-Transport-Security` in production.
+* **Logging.** One JSON line per request (method, route pattern, status, duration, user id, `requestId`) — never bodies, cookies or query strings. An incoming `x-request-id` (8–128 safe characters) is reused, otherwise generated, and echoed in the response.
+
+## Database roles
+
+Bedest Lite has no row-level security, but it uses the same two-role model as Bedest so that the API cannot change the schema or rewrite audit history:
+
+| Role | Used by | Privileges |
+| --- | --- | --- |
+| Schema owner (`DATABASE_MIGRATION_USER`) | drizzle-kit, the migration runner, `RedactAuditLogs` | Owns the tables; runs DDL. |
+| `bedest_app` (group role, `NOLOGIN NOSUPERUSER NOBYPASSRLS`) | — | `SELECT, INSERT, UPDATE, DELETE` on all tables, only `SELECT, INSERT` on `system_audit_logs`; future tables through default privileges. |
+| Runtime login (`DATABASE_USER`) | The API server | Member of `bedest_app`, nothing else. |
+
+`ProvisionRoles` creates `bedest_app` (if missing) and the `DATABASE_USER` login with `DATABASE_PASSWORD`; it is idempotent and can be re-run to rotate the password. At boot the server refuses to start in production as a superuser (warning elsewhere). In tests the application connection runs as `bedest_app` too.
 
 ## Deployment
 
-A multi-stage Dockerfile is recommended, optimized for minimal image size and maximum security in production environments. Ensure you set `NODE_ENV=production` to enforce secure cookies and silent logging.
+`docker-compose.yml` is a production-style stack: `db` → `provision` (one-shot `dist/provision-roles.js`) → `migrate` (one-shot `dist/migrate.js` as the schema owner) → `api`. Copy `.env.example` to `.env` and set real values first: production needs `CORS_ORIGINS`, real `SECRET_KEY`/`REFRESH_KEY`, `MAIL_PROVIDER=smtp` with the `SMTP_*` variables and `MAIL_FROM`, and `APP_PUBLIC_URL`.
 
 ```bash
-docker-compose up -d
-
+docker compose up -d
 ```
+
+* **Build.** `bun run build` bundles the server (`dist/index.js`), the migration runner (`dist/migrate.js`) and the role provisioning (`dist/provision-roles.js`) with `bun build`; it does not produce a standalone executable. `bun run start` runs `dist/index.js` with `NODE_ENV=production`.
+* **Migrations.** Never on server start: run `bun run db:migrate:prod` (or `dist/migrate.js`) as the schema owner before starting a new version. Committed migrations are never edited.
+* **Health checks.** `GET /api/health/live` (process up) and `GET /api/health/ready` (database and storage; `503` while shutting down or when a dependency fails).
+* **Shutdown.** On `SIGTERM`/`SIGINT` the server reports not-ready, stops accepting connections, closes sockets, stops the jobs and closes the database within `SHUTDOWN_TIMEOUT_MS`.
+* **Single node.** Rate limits live in process memory and sockets on the node that accepted them; run one API instance (use Bedest for multi-node deployments).
+* **Logs.** JSON lines on stdout at `LOG_LEVEL` (default `info`); production is not silent.
+
+## Testing
+
+Tests run against **PGlite** (in-memory Postgres) with the real migrations; no database container is needed. Application queries run as `bedest_app`, as in production.
+
+```bash
+bun run test       # all tests
+bun run coverage   # with the coverage gate (≥ 80 % lines per file in src/features and src/infrastructure)
+```
+
+`src/common/tests/TestManager.test.ts` (preloaded) migrates the database, creates per-test fixtures with generated e-mails (`test_user` — a plain `USER` — and `test_system_user`), and truncates everything after each test. Request a principal explicitly: `testHeaders()` (USER), `testSystemHeaders()`, `createTestUser(role)`. External I/O (S3, SMTP, GitHub) is replaced by fakes; the mail outbox is `ProviderMailConsole.sent`.
 
 ## Scripts
 
 | Command | Description |
 | --- | --- |
-| `bun run dev` | Start development server with hot reload |
-| `bun run build` | Compile the application into a standalone executable via Bun |
-| `bun run check` | Run TypeScript type-check and ESLint |
-| `bun run test` | Run isolated unit and integration tests via PGlite |
-| `bun run db:generate` | Generate Drizzle migrations |
-| `bun run db:migrate` | Apply migrations to the database |
-| `bun run dev:setup` | Full rebuild: Reset DB/Storage, Migrate, and Seed initial data |
+| `bun run dev` | Development server with reload |
+| `bun run build` | Bundle `dist/index.js`, `dist/migrate.js`, `dist/provision-roles.js` with `bun build` |
+| `bun run start` | Run the bundle with `NODE_ENV=production` |
+| `bun run check` | Typecheck and ESLint (`--max-warnings=0`) |
+| `bun run format` / `format:check` | Prettier write / verify |
+| `bun run test` / `coverage` | Tests / tests with the coverage gate |
+| `bun run db:generate` | Generate a migration from the schemas (`--name <reason>`; `--custom` for SQL) |
+| `bun run db:migrate` | Apply migrations with drizzle-kit (development) |
+| `bun run db:migrate:prod` | Migration runner for deployments (schema owner) |
+| `bun run db:check` | drizzle-kit consistency check |
+| `bun run db:seed` | Seed the SYSTEM user (`SEED_SYSTEM_EMAIL`) |
+| `bun run db:reset` | Drop and re-create the database and delete `LOCAL_STORAGE_PATH` (refused in production; `CONFIRM_RESET=<DATABASE_NAME>`) |
+| `bun run dev:setup` | Reset (same confirmation), migrate, seed |
+| `bun run src/scripts/database/ProvisionRoles.ts` | Create/rotate `bedest_app` and the runtime login |
+| `bun run src/scripts/audit/RedactAuditLogs.ts [--apply]` | Redact secrets in old audit rows (dry run without `--apply`) |
+
+---
+
+## Upgrading to this release
+
+This release changes behaviour and configuration. Before deploying:
+
+1. **Install bedest-core 2.0** once it is published (`bun install`); the template's `package.json` already asks for `^2.0.0`. See its [upgrade notes](https://github.com/bedest-hq/bedest-core#upgrading-from-1x-to-20) (`getFilters(c, id?)`, ESM only).
+2. **Set the new environment variables**: `NODE_ENV` (required, no default), `CORS_ORIGINS` (replaces `CORS_ORIGIN`), `DATABASE_SSL_MODE` (replaces `DATABASE_SSL`), `MAIL_PROVIDER`, `APP_PUBLIC_URL` and, for SMTP, `SMTP_*`/`MAIL_FROM`. Secrets shorter than 32 characters or equal to the placeholders are refused.
+3. **Provision the database roles** (`ProvisionRoles`), point `DATABASE_USER` at the new runtime login and `DATABASE_MIGRATION_*` at the schema owner, then run the migrations as the owner. They add append-only audit logs, new columns and tables, and clean up data where needed (duplicate e-mails and organizations, orphan sessions).
+4. **Redact old audit rows**: `bun run src/scripts/audit/RedactAuditLogs.ts`, then with `--apply`; rotate any password that may have been stored in clear.
+5. **Update clients**:
+   * Error bodies are always `{ error, message?, details?, requestId? }`.
+   * `POST /auth/refresh` returns `{ success: true }`; tokens only travel in cookies. The refresh cookie moved to `Path=/api/v1/auth; SameSite=Strict`, and tokens need `iss`/`aud`/`typ`: every user signs in once after the deploy.
+   * New passwords need 12–128 characters.
+   * `GET /user` items carry `status` (`ACTIVE`/`INVITED`).
+   * Audit configuration is `audit: { entity, action? }` (no `audit: true`).
+   * `DELETE /storage/:id` is limited to the uploader or an ADMIN (409 while the file is an avatar).
+   * `GET /organization` omits `taxId` unless `ORGANIZATION_PUBLIC_TAX_ID=true`.
+
+The full list, with the finding ids, is in `CHANGELOG.md` under *Unreleased*.
 
 ---
 
 ## License
 
 This project is licensed under the MIT License.
-
-```

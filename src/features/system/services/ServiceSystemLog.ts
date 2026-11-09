@@ -1,8 +1,12 @@
+import { UtilHttp } from "@/common/utils/UtilHttp";
+import { UtilCursor } from "@/common/utils/UtilCursor";
 import { SSystemLog } from "../schemas/SSystemLog";
 import { logger } from "@/infrastructure/logger/logger";
-import { IUserApp } from "bedest-core";
+import { IUserApp, TDb } from "bedest-core";
 import { and, count, desc, eq, SQL } from "drizzle-orm";
-import { status } from "elysia";
+
+/** userId of events without an acting user (failed logins, jobs). */
+export const SYSTEM_AUDIT_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 class ServiceSystemLog {
   async log(
@@ -10,8 +14,8 @@ class ServiceSystemLog {
     params: {
       action: string;
       entity: string;
-      entityId: string;
-      payload: unknown;
+      entityId: string | null;
+      payload: Record<string, unknown>;
     },
   ) {
     try {
@@ -20,10 +24,40 @@ class ServiceSystemLog {
         action: params.action,
         entity: params.entity,
         entityId: params.entityId,
-        payload: params.payload as Record<string, unknown>,
+        payload: params.payload,
       });
     } catch (err) {
       logger.error({ err, params }, "Audit Log insertion failed");
+    }
+  }
+
+  /**
+   * A system event without an authenticated actor (e.g. LOGIN_FAILED,
+   * FEAT-07). Errors are logged and swallowed like `log`.
+   */
+  async logEvent(
+    db: TDb,
+    params: {
+      userId?: string;
+      action: string;
+      entity: string;
+      entityId: string | null;
+      payload: Record<string, unknown>;
+    },
+  ) {
+    try {
+      await db.insert(SSystemLog).values({
+        userId: params.userId ?? SYSTEM_AUDIT_USER_ID,
+        action: params.action,
+        entity: params.entity,
+        entityId: params.entityId,
+        payload: params.payload,
+      });
+    } catch (err) {
+      logger.error(
+        { err, action: params.action },
+        "Audit Log insertion failed",
+      );
     }
   }
 
@@ -36,8 +70,11 @@ class ServiceSystemLog {
       entity?: string;
       entityId?: string;
       userId?: string;
+      cursor?: string;
     },
   ) {
+    const cursor =
+      query.cursor === undefined ? undefined : UtilCursor.decode(query.cursor);
     const filters: SQL<unknown>[] = [];
 
     if (query.action) {
@@ -53,29 +90,49 @@ class ServiceSystemLog {
       filters.push(eq(SSystemLog.userId, query.userId));
     }
 
+    const select = () =>
+      c.db
+        .select({
+          row: {
+            id: SSystemLog.id,
+            userId: SSystemLog.userId,
+            action: SSystemLog.action,
+            entity: SSystemLog.entity,
+            entityId: SSystemLog.entityId,
+            payload: SSystemLog.payload,
+            createdAt: SSystemLog.createdAt,
+          },
+          cursorKey: UtilCursor.key(SSystemLog.createdAt),
+        })
+        .from(SSystemLog)
+        .orderBy(desc(SSystemLog.createdAt), desc(SSystemLog.id))
+        .$dynamic();
+
+    // Keyset mode: no COUNT, no OFFSET [PERF-02].
+    if (cursor) {
+      const rows = await select()
+        .where(
+          and(
+            ...filters,
+            UtilCursor.after(SSystemLog.createdAt, SSystemLog.id, cursor),
+          ),
+        )
+        .limit(query.limit + 1);
+      const { data, nextCursor } = UtilCursor.page(rows, query.limit);
+      return { data, meta: { limit: query.limit, nextCursor } };
+    }
+
     const [totalRes] = await c.db
       .select({ count: count() })
       .from(SSystemLog)
       .where(and(...filters));
 
     const total = Number(totalRes.count);
-    const offset = (query.page - 1) * query.limit;
-
-    const data = await c.db
-      .select({
-        id: SSystemLog.id,
-        userId: SSystemLog.userId,
-        action: SSystemLog.action,
-        entity: SSystemLog.entity,
-        entityId: SSystemLog.entityId,
-        payload: SSystemLog.payload,
-        createdAt: SSystemLog.createdAt,
-      })
-      .from(SSystemLog)
+    const rows = await select()
       .where(and(...filters))
-      .orderBy(desc(SSystemLog.createdAt))
-      .limit(query.limit)
-      .offset(offset);
+      .limit(query.limit + 1)
+      .offset((query.page - 1) * query.limit);
+    const { data, nextCursor } = UtilCursor.page(rows, query.limit);
 
     return {
       data,
@@ -84,6 +141,7 @@ class ServiceSystemLog {
         page: query.page,
         limit: query.limit,
         totalPages: Math.ceil(total / query.limit),
+        nextCursor,
       },
     };
   }
@@ -96,7 +154,7 @@ class ServiceSystemLog {
       .limit(1);
 
     if (!res) {
-      throw status("Not Found");
+      throw UtilHttp.fail(404);
     }
 
     return res;

@@ -1,14 +1,18 @@
 import { describe, it, expect } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import { test_user, testHeaders } from "@/common/tests/TestManager.test";
+import {
+  test_system_user,
+  testSystemHeaders,
+} from "@/common/tests/TestManager.test";
 import { RouterUser } from "./RouterUser";
 import { EUserRole } from "../enums/EUserRole";
+import { EUserStatus } from "../enums/EUserStatus";
 
 const api = treaty(RouterUser);
 
 describe("RouterUser", () => {
   it("Create a new user", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
 
     const res = await api.user.post(
       {
@@ -25,7 +29,7 @@ describe("RouterUser", () => {
   });
 
   it("Get all users", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
 
     await api.user.post(
       {
@@ -43,26 +47,29 @@ describe("RouterUser", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(res.data!.data).toStrictEqual([
-      {
-        id: expect.any(String),
-        createdAt: expect.any(Date),
-        name: "List User",
-        role: EUserRole.USER,
-        avatarId: null,
-      },
-      {
-        id: expect.any(String),
-        createdAt: expect.any(Date),
-        name: "Test User",
-        role: EUserRole.SYSTEM,
-        avatarId: null,
-      },
-    ]);
+    const row = (name: string, role: EUserRole) => ({
+      id: expect.any(String),
+      createdAt: expect.any(Date),
+      name,
+      role,
+      // [FEAT-06] The list shows the account status.
+      status: EUserStatus.ACTIVE,
+      avatarId: null,
+    });
+    const [newest, ...fixtures] = res.data!.data;
+    expect(newest).toStrictEqual(row("List User", EUserRole.USER));
+    // The two fixture users (USER default principal and the explicit
+    // SYSTEM user [TST-01]) share one insert: their order is a tie.
+    expect(fixtures.sort((a, b) => a.name.localeCompare(b.name))).toStrictEqual(
+      [
+        row("Test System User", EUserRole.SYSTEM),
+        row("Test User", EUserRole.USER),
+      ],
+    );
   });
 
   it("Get user by id", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
 
     const user = await api.user.post(
       {
@@ -88,14 +95,15 @@ describe("RouterUser", () => {
   });
 
   it("Get Self", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
 
     const res = await api.user.self.get({ headers });
 
     expect(res.status).toBe(200);
     expect(res.data).toStrictEqual({
-      name: "Test User",
-      email: "text@example.com",
+      // The explicit SYSTEM fixture; no fixed e-mail [TST-01][TST-06].
+      name: "Test System User",
+      email: test_system_user.email,
       role: EUserRole.SYSTEM,
       avatarId: null,
       createdAt: expect.any(Date),
@@ -103,9 +111,9 @@ describe("RouterUser", () => {
   });
 
   it("Update user", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
 
-    const res = await api.user({ id: test_user.id }).put(
+    const res = await api.user({ id: test_system_user.id }).put(
       {
         name: "Updated User Name",
       },
@@ -114,7 +122,7 @@ describe("RouterUser", () => {
 
     expect(res.status).toBe(200);
 
-    const updatedRes = await api.user({ id: test_user.id }).get({
+    const updatedRes = await api.user({ id: test_system_user.id }).get({
       headers,
     });
 
@@ -128,7 +136,7 @@ describe("RouterUser", () => {
   });
 
   it("Delete user", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
 
     const user = await api.user.post(
       {
@@ -152,7 +160,7 @@ describe("RouterUser", () => {
   });
 
   it("Return 404 for non-existent user", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
     const fakeId = "00000000-0000-0000-0000-000000000000";
 
     const res = await api.user({ id: fakeId }).get({
@@ -169,7 +177,7 @@ describe("RouterUser", () => {
   });
 
   it("Non-privileged user can change password with correct currentPassword", async () => {
-    const adminHeaders = await testHeaders();
+    const adminHeaders = await testSystemHeaders();
 
     const createRes = await api.user.post(
       {
@@ -208,7 +216,7 @@ describe("RouterUser", () => {
   });
 
   it("Non-privileged user is rejected when currentPassword is wrong", async () => {
-    const adminHeaders = await testHeaders();
+    const adminHeaders = await testSystemHeaders();
 
     const createRes = await api.user.post(
       {
@@ -244,7 +252,7 @@ describe("RouterUser", () => {
   });
 
   it("Non-privileged user is rejected when currentPassword is omitted", async () => {
-    const adminHeaders = await testHeaders();
+    const adminHeaders = await testSystemHeaders();
 
     const createRes = await api.user.post(
       {
@@ -279,7 +287,7 @@ describe("RouterUser", () => {
   });
 
   it("SYSTEM user can change any password without currentPassword", async () => {
-    const adminHeaders = await testHeaders();
+    const adminHeaders = await testSystemHeaders();
 
     const createRes = await api.user.post(
       {

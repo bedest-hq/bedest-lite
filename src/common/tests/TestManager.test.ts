@@ -18,6 +18,7 @@ import Elysia from "elysia";
 import jwt from "@elysiajs/jwt";
 import { password } from "bun";
 import { SSession } from "@f/session/schemas/SSession";
+import { JWT_AUDIENCE } from "@f/auth/validations/VJwtPayload";
 
 const EnvManager = await import("@/infrastructure/env/EnvManager");
 const DbManager = await import("@/infrastructure/database/DbManager");
@@ -71,6 +72,7 @@ const test_env: TEnv = {
   DATABASE_PORT: 3000,
   DATABASE_USER: "test_user",
   REFRESH_KEY: "test-refresh-key-at-least-32-characters-long",
+  JWT_ISSUER: "bedest",
   SECRET_KEY: "test-access-key-at-least-32-characters-long",
   PORT: 3000,
   MAX_REQUEST_BODY_BYTES: 10 * 1024 * 1024,
@@ -141,6 +143,8 @@ const test_signer = new Elysia().use(
   jwt({
     name: "accessJwt",
     secret: test_env.SECRET_KEY,
+    iss: test_env.JWT_ISSUER,
+    aud: JWT_AUDIENCE,
     exp: "15m",
   }),
 );
@@ -165,6 +169,7 @@ export const testHeaders = async (user = test_user) => {
     .returning({ id: SSession.id });
 
   const token = await test_signer.decorator.accessJwt.sign({
+    typ: "access",
     userId: user.id,
     sessionId: session.id,
     role: user.role,

@@ -8,7 +8,11 @@ import { UtilClientIp } from "@/infrastructure/ratelimit/UtilClientIp";
 import ServiceSystem from "@f/system/services/ServiceSystem";
 import ServiceSession from "@f/session/services/ServiceSession";
 import { UtilAuth } from "@f/auth/utils/UtilAuth";
-import { VJwtPayload } from "@f/auth/validations/VJwtPayload";
+import {
+  JWT_AUDIENCE,
+  VAccessJwtPayload,
+  VRefreshJwtPayload,
+} from "@f/auth/validations/VJwtPayload";
 import { PluginAudit } from "@f/system/plugins/PluginAudit";
 import { ISession, IUserApp, MacroRoleGuard } from "bedest-core";
 
@@ -17,18 +21,22 @@ class Context {
 
   private refreshPlugin = jwt({
     name: "refreshJwt",
-    secret: this.env.REFRESH_KEY!,
+    secret: this.env.REFRESH_KEY,
     exp: "7d",
     iat: true,
-    schema: VJwtPayload,
+    iss: this.env.JWT_ISSUER,
+    aud: JWT_AUDIENCE,
+    schema: VRefreshJwtPayload,
   });
 
   private accessPlugin = jwt({
     name: "accessJwt",
-    secret: this.env.SECRET_KEY!,
+    secret: this.env.SECRET_KEY,
     exp: "15m",
     iat: true,
-    schema: VJwtPayload,
+    iss: this.env.JWT_ISSUER,
+    aud: JWT_AUDIENCE,
+    schema: VAccessJwtPayload,
   });
 
   App() {

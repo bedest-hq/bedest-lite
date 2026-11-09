@@ -28,7 +28,7 @@ describe("RouterOrganization", () => {
       city: null,
       state: null,
       zipCode: null,
-      taxId: null,
+      // taxId is not public unless ORGANIZATION_PUBLIC_TAX_ID=true [BUG-17].
       currency: "USD",
       timezone: "UTC",
       links: [

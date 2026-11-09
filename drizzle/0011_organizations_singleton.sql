@@ -1,0 +1,2 @@
+ALTER TABLE "organizations" ADD COLUMN "singleton" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "idx_organizations_singleton" ON "organizations" USING btree ("singleton") WHERE "organizations"."isDeleted" = false;

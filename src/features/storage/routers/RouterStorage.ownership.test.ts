@@ -138,6 +138,8 @@ describe("SEC-26: who may delete a file", () => {
   it("[SEC-26] a file used as the organization logo cannot be deleted (409)", async () => {
     const admin = await createTestUser(EUserRole.ADMIN);
     const id = await insertFile(admin.user.id);
+    // The organization is a singleton [BUG-17]: replace any existing one.
+    await test_db.delete(SOrganization);
     await test_db.insert(SOrganization).values({
       displayName: "Acme",
       fullName: "Acme Inc.",

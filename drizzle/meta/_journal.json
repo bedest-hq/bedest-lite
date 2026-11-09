@@ -71,6 +71,20 @@
       "when": 1794204697080,
       "tag": "0009_audit_entity_nullable",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794206120088,
+      "tag": "0010_organizations_dedupe",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794206131530,
+      "tag": "0011_organizations_singleton",
+      "breakpoints": true
     }
   ]
 }

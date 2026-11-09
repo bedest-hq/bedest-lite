@@ -98,3 +98,42 @@ describe("migrations", () => {
     }
   });
 });
+
+describe("migrations (BUG-17)", () => {
+  it("[BUG-17] 0010 keeps the newest active organization, 0011 enforces a single active row", async () => {
+    const db = new PGlite();
+    try {
+      await migrateThrough(db, tagStartingWith("0009_"));
+      await db.exec(`
+        INSERT INTO organizations (id, "displayName", "fullName", "createdAt") VALUES
+          ('11111111-1111-4111-8111-111111111111', 'old', 'Old', '2024-01-01'),
+          ('22222222-2222-4222-8222-222222222222', 'newest', 'Newest', '2024-03-01'),
+          ('33333333-3333-4333-8333-333333333333', 'middle', 'Middle', '2024-02-01');
+      `);
+
+      await apply(db, tagStartingWith("0010_"));
+      await apply(db, tagStartingWith("0011_"));
+
+      const active = await db.query<{ displayName: string }>(
+        'SELECT "displayName" FROM organizations WHERE "isDeleted" = false',
+      );
+      expect(active.rows).toEqual([{ displayName: "newest" }]);
+      const deleted = await db.query<{ n: number }>(
+        'SELECT count(*)::int AS n FROM organizations WHERE "isDeleted" = true AND "deletedAt" IS NOT NULL',
+      );
+      expect(deleted.rows[0]?.n).toBe(2);
+
+      let failure: unknown = null;
+      try {
+        await db.exec(
+          "INSERT INTO organizations (\"displayName\", \"fullName\") VALUES ('x', 'X')",
+        );
+      } catch (err) {
+        failure = err;
+      }
+      expect(failure).toMatchObject({ code: "23505" });
+    } finally {
+      await db.close();
+    }
+  });
+});

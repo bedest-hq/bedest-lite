@@ -79,4 +79,6 @@ export const VEnv = t.Object({
   RATE_LIMIT_LOGIN_IP_PER_MIN: Type.Integer({ minimum: 1, default: 20 }),
   // Token refreshes per minute per client IP.
   RATE_LIMIT_REFRESH_PER_MIN: Type.Integer({ minimum: 1, default: 30 }),
+  // Include taxId in the public GET /organization response [BUG-17].
+  ORGANIZATION_PUBLIC_TAX_ID: t.Boolean({ default: false }),
 });

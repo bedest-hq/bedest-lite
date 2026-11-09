@@ -44,3 +44,9 @@ export const VOrganizationUpdate = t.Object({
   logoId: t.Optional(t.Nullable(VId)),
   links: t.Optional(t.Nullable(t.Array(t.String()))),
 });
+
+/** GET /organization (public): taxId only with ORGANIZATION_PUBLIC_TAX_ID [BUG-17]. */
+export const VOrganizationPublic = t.Object({
+  ...t.Omit(VOrganization, ["taxId"]).properties,
+  taxId: t.Optional(t.Nullable(VString)),
+});

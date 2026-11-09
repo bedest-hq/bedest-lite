@@ -91,6 +91,7 @@ const test_env: TEnv = {
   RATE_LIMIT_LOGIN_PER_MIN: 5,
   RATE_LIMIT_LOGIN_IP_PER_MIN: 20,
   RATE_LIMIT_REFRESH_PER_MIN: 30,
+  ORGANIZATION_PUBLIC_TAX_ID: false,
   LOCAL_STORAGE_PATH: "./test_uploads",
   S3_ENDPOINT: "http://localhost:9000",
   S3_REGION: "us-east-1",

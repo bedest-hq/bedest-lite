@@ -86,7 +86,10 @@ class ServiceSession {
       const [old] = await tx
         .delete(SSession)
         .where(
-          and(eq(SSession.id, sessionId), gt(SSession.expiresAt, c.nowDatetime)),
+          and(
+            eq(SSession.id, sessionId),
+            gt(SSession.expiresAt, c.nowDatetime),
+          ),
         )
         .returning({ userId: SSession.userId, familyId: SSession.familyId });
 

@@ -9,7 +9,8 @@ import ServiceHealth from "../services/ServiceHealth";
 const StorageManager = await import("@/infrastructure/storage/StorageManager");
 
 const app = new Elysia({ prefix: "/api" }).use(ErrorHandler).use(RouterHealth);
-const get = (path: string) => app.handle(new Request(`http://localhost${path}`));
+const get = (path: string) =>
+  app.handle(new Request(`http://localhost${path}`));
 
 describe("FEAT-01: health endpoints", () => {
   afterEach(async () => {
@@ -28,7 +29,10 @@ describe("FEAT-01: health endpoints", () => {
 
   it("[FEAT-01] GET /api/health/ready → 200 with every check", async () => {
     // External I/O only: the object-store probe.
-    const storage = spyOn(StorageManager.default, "healthCheck").mockResolvedValue("ok");
+    const storage = spyOn(
+      StorageManager.default,
+      "healthCheck",
+    ).mockResolvedValue("ok");
     try {
       const res = await get("/api/health/ready");
       expect(res.status).toBe(200);
@@ -42,9 +46,10 @@ describe("FEAT-01: health endpoints", () => {
   });
 
   it("[FEAT-01] a failing check → 503 naming it", async () => {
-    const storage = spyOn(StorageManager.default, "healthCheck").mockRejectedValue(
-      new Error("bucket unreachable"),
-    );
+    const storage = spyOn(
+      StorageManager.default,
+      "healthCheck",
+    ).mockRejectedValue(new Error("bucket unreachable"));
     try {
       const res = await get("/api/health/ready");
       expect(res.status).toBe(503);
@@ -76,7 +81,10 @@ describe("FEAT-01: health endpoints", () => {
     ServiceHealth.markNotReady();
     const res = await get("/api/health/ready");
     expect(res.status).toBe(503);
-    expect(await res.json()).toMatchObject({ status: "error", reason: "shutting_down" });
+    expect(await res.json()).toMatchObject({
+      status: "error",
+      reason: "shutting_down",
+    });
   });
 
   it("[FEAT-01] health is not blocked by maintenance mode and needs no auth", async () => {
@@ -92,7 +100,9 @@ describe("FEAT-01: mount point", () => {
   it("[FEAT-01] the application router serves /api/health/live (outside /api/v1)", async () => {
     const { Router } = await import("@/app/Router");
     const router = new Elysia().use(Router);
-    const res = await router.handle(new Request("http://localhost/api/health/live"));
+    const res = await router.handle(
+      new Request("http://localhost/api/health/live"),
+    );
     expect(res.status).toBe(200);
   });
 });

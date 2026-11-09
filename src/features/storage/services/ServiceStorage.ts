@@ -47,7 +47,10 @@ class ServiceStorage extends ServiceBase<typeof SStorage, string> {
       await c.db
         .delete(SStorage)
         .where(
-          and(eq(SStorage.id, res.id), eq(SStorage.status, EStorageStatus.PENDING)),
+          and(
+            eq(SStorage.id, res.id),
+            eq(SStorage.status, EStorageStatus.PENDING),
+          ),
         );
       throw err;
     }
@@ -94,7 +97,10 @@ class ServiceStorage extends ServiceBase<typeof SStorage, string> {
     const privileged =
       c.session.isSuperUser || c.session.role === EUserRole.ADMIN;
     if (!privileged && file.uploadedBy !== c.session.userId) {
-      throw UtilHttp.fail(403, "Only the uploader or an admin can delete this file");
+      throw UtilHttp.fail(
+        403,
+        "Only the uploader or an admin can delete this file",
+      );
     }
 
     if (await this.isReferenced(c, id)) {

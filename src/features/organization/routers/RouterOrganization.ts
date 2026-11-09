@@ -25,26 +25,28 @@ export const RouterOrganization = new Elysia({
     },
   )
   .guard({}, (app) =>
-    app
-      .use(Context.User())
-      .guard(
-        {
-          RoleGuard: [EUserRole.ADMIN, EUserRole.SYSTEM],
-        },
-        (authApp) =>
-          authApp.put(
-            "/",
-            async ({ body, userRuntime }) => {
-              const organization = await ServiceOrganization.getSelf(userRuntime);
-              await ServiceOrganization.update(userRuntime, organization.id, body);
-              const res = await ServiceOrganization.getSelf(userRuntime);
-              return res;
-            },
-            {
-              body: VOrganizationUpdate,
-              response: VOrganization,
-              audit: { entity: "organization" },
-            },
-          ),
-      ),
+    app.use(Context.User()).guard(
+      {
+        RoleGuard: [EUserRole.ADMIN, EUserRole.SYSTEM],
+      },
+      (authApp) =>
+        authApp.put(
+          "/",
+          async ({ body, userRuntime }) => {
+            const organization = await ServiceOrganization.getSelf(userRuntime);
+            await ServiceOrganization.update(
+              userRuntime,
+              organization.id,
+              body,
+            );
+            const res = await ServiceOrganization.getSelf(userRuntime);
+            return res;
+          },
+          {
+            body: VOrganizationUpdate,
+            response: VOrganization,
+            audit: { entity: "organization" },
+          },
+        ),
+    ),
   );

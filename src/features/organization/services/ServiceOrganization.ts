@@ -2,7 +2,6 @@ import { UtilHttp } from "@/common/utils/UtilHttp";
 import { SOrganization } from "../schemas/SOrganization";
 import { IApp, ServiceBase } from "bedest-core";
 
-
 class ServiceOrganization extends ServiceBase<typeof SOrganization, string> {
   constructor() {
     super(SOrganization);

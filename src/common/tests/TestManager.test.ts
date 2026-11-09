@@ -142,9 +142,8 @@ spyOn(EnvManager.default, "get").mockReturnValue(test_env);
 spyOn(DbManager.default, "get").mockReturnValue(asNodePg(test_app_db));
 
 // Imported after the spies: it pulls in modules that read the env on import.
-const RateLimitManager = await import(
-  "@/infrastructure/ratelimit/RateLimitManager"
-);
+const RateLimitManager =
+  await import("@/infrastructure/ratelimit/RateLimitManager");
 const ServiceSession = await import("@f/session/services/ServiceSession");
 const ServiceSystem = await import("@f/system/services/ServiceSystem");
 
@@ -225,13 +224,17 @@ beforeEach(async () => {
 
   test_user = insertedUser;
 
-  const { SOrganization } = await import("@f/organization/schemas/SOrganization");
+  const { SOrganization } =
+    await import("@f/organization/schemas/SOrganization");
   await test_db.insert(SOrganization).values({
     displayName: "Acme Corp",
     fullName: "Acme Corporation Inc.",
     phone: "+1-800-555-0199",
     address: "123 Acme Way, Cityville, ST 12345",
-    links: ["https://twitter.com/acmecorp", "https://linkedin.com/company/acmecorp"],
+    links: [
+      "https://twitter.com/acmecorp",
+      "https://linkedin.com/company/acmecorp",
+    ],
   });
 });
 

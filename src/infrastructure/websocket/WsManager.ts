@@ -58,7 +58,10 @@ export class WsManager {
   init(server: IPublisher) {
     this.server = server;
     this.stopSweep?.();
-    this.stopSweep = this.every(() => this.sweepExpired(), WS_SWEEP_INTERVAL_MS);
+    this.stopSweep = this.every(
+      () => this.sweepExpired(),
+      WS_SWEEP_INTERVAL_MS,
+    );
   }
 
   registerClient(ws: IWsClient, info: IWsClientInfo) {
@@ -114,7 +117,12 @@ export class WsManager {
     return entry;
   }
 
-  private terminate(ids: Iterable<string>, event: string, code: number, reason: string) {
+  private terminate(
+    ids: Iterable<string>,
+    event: string,
+    code: number,
+    reason: string,
+  ) {
     for (const id of [...ids]) {
       const entry = this.remove(id);
       if (!entry) {

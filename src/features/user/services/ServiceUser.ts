@@ -96,7 +96,10 @@ class ServiceUser extends ServiceBase<typeof SUser, string> {
       }
       if (data.password) {
         if (!data.currentPassword) {
-          throw UtilHttp.fail(400, "currentPassword is required to change your password");
+          throw UtilHttp.fail(
+            400,
+            "currentPassword is required to change your password",
+          );
         }
         const valid = await Bun.password.verify(
           data.currentPassword,
@@ -168,16 +171,21 @@ class ServiceUser extends ServiceBase<typeof SUser, string> {
         and(
           eq(
             SUser.role,
-            target.role === EUserRole.ADMIN ? EUserRole.ADMIN : EUserRole.SYSTEM,
+            target.role === EUserRole.ADMIN
+              ? EUserRole.ADMIN
+              : EUserRole.SYSTEM,
           ),
           eq(SUser.isDeleted, false),
           ne(SUser.id, target.id),
         ),
       );
     if (Number(others?.n ?? 0) === 0) {
-      throw UtilHttp.fail(409, target.role === EUserRole.ADMIN
-            ? "Cannot delete the last active ADMIN"
-            : "Cannot delete the last active SYSTEM user");
+      throw UtilHttp.fail(
+        409,
+        target.role === EUserRole.ADMIN
+          ? "Cannot delete the last active ADMIN"
+          : "Cannot delete the last active SYSTEM user",
+      );
     }
   }
 

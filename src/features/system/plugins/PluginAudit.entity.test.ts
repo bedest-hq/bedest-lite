@@ -7,26 +7,29 @@ import { ErrorHandler } from "@/infrastructure/error/ErrorHandler";
 import { EUserRole } from "@f/user/enums/EUserRole";
 import { SSystemLog } from "../schemas/SSystemLog";
 
-const app = new Elysia()
-  .use(ErrorHandler)
-  .use(
-    new Elysia()
-      .use(Context.User())
-      .post("/things", () => ({ success: true }), { audit: { entity: "thing" } })
-      .put("/things/:id", () => ({ success: true }), {
-        params: t.Object({ id: t.String() }),
-        audit: { entity: "thing", action: "RENAME" },
-      })
-      .delete(
-        "/things/:id",
-        () => {
-          throw status(403, { error: "Forbidden" });
-        },
-        { audit: { entity: "thing" } },
-      ),
-  );
+const app = new Elysia().use(ErrorHandler).use(
+  new Elysia()
+    .use(Context.User())
+    .post("/things", () => ({ success: true }), { audit: { entity: "thing" } })
+    .put("/things/:id", () => ({ success: true }), {
+      params: t.Object({ id: t.String() }),
+      audit: { entity: "thing", action: "RENAME" },
+    })
+    .delete(
+      "/things/:id",
+      () => {
+        throw status(403, { error: "Forbidden" });
+      },
+      { audit: { entity: "thing" } },
+    ),
+);
 
-const call = async (method: string, path: string, cookie: string, body?: unknown) =>
+const call = async (
+  method: string,
+  path: string,
+  cookie: string,
+  body?: unknown,
+) =>
   app.handle(
     new Request(`http://localhost${path}`, {
       method,
@@ -58,31 +61,52 @@ describe("BUG-11: audit rows record the configured entity, never a guessed id", 
     expect((await call("POST", "/things", headers.Cookie)).status).toBe(200);
 
     const row = await newestRow(user.id);
-    expect(row).toMatchObject({ entity: "thing", action: "POST", entityId: null });
+    expect(row).toMatchObject({
+      entity: "thing",
+      action: "POST",
+      entityId: null,
+    });
   });
 
   it("[BUG-11] the :id param is the entity id; the configured action is used", async () => {
     const { user, headers } = await createTestUser(EUserRole.USER);
     const id = crypto.randomUUID();
-    expect((await call("PUT", `/things/${id}`, headers.Cookie)).status).toBe(200);
+    expect((await call("PUT", `/things/${id}`, headers.Cookie)).status).toBe(
+      200,
+    );
 
-    expect(await newestRow(user.id)).toMatchObject({ entity: "thing", action: "RENAME", entityId: id });
+    expect(await newestRow(user.id)).toMatchObject({
+      entity: "thing",
+      action: "RENAME",
+      entityId: id,
+    });
   });
 
   it("[BUG-11] a non-UUID id is not stored as entityId (the row is still written)", async () => {
     const { user, headers } = await createTestUser(EUserRole.USER);
-    expect((await call("PUT", "/things/not-a-uuid", headers.Cookie)).status).toBe(200);
+    expect(
+      (await call("PUT", "/things/not-a-uuid", headers.Cookie)).status,
+    ).toBe(200);
 
-    expect(await newestRow(user.id)).toMatchObject({ entity: "thing", entityId: null });
+    expect(await newestRow(user.id)).toMatchObject({
+      entity: "thing",
+      entityId: null,
+    });
   });
 
   it("[BUG-11] a failed request is audited with the configured entity and without the actor as entity", async () => {
     const { user, headers } = await createTestUser(EUserRole.USER);
     const id = crypto.randomUUID();
-    expect((await call("DELETE", `/things/${id}`, headers.Cookie)).status).toBe(403);
+    expect((await call("DELETE", `/things/${id}`, headers.Cookie)).status).toBe(
+      403,
+    );
 
     const row = await newestRow(user.id);
-    expect(row).toMatchObject({ entity: "thing", action: "FAILED_DELETE", entityId: id });
+    expect(row).toMatchObject({
+      entity: "thing",
+      action: "FAILED_DELETE",
+      entityId: id,
+    });
     expect(row.payload).toMatchObject({ statusCode: 403 });
     expect(row.entityId).not.toBe(user.id);
   });

@@ -15,12 +15,14 @@ describe("SEC-13: no self-lockout", () => {
     const system = await testHeaders();
     const admin = await createTestUser(EUserRole.ADMIN);
     expect(
-      (await users.user({ id: admin.user.id }).delete({}, { headers: system })).status,
+      (await users.user({ id: admin.user.id }).delete({}, { headers: system }))
+        .status,
     ).toBe(409);
 
     await createTestUser(EUserRole.ADMIN);
     expect(
-      (await users.user({ id: admin.user.id }).delete({}, { headers: system })).status,
+      (await users.user({ id: admin.user.id }).delete({}, { headers: system }))
+        .status,
     ).toBe(200);
   });
 

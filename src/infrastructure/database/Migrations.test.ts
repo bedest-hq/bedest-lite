@@ -56,14 +56,32 @@ describe("migrations", () => {
       await apply(db, tagStartingWith("0003_"));
       await apply(db, tagStartingWith("0004_"));
 
-      const rows = await db.query<{ id: string; email: string; isDeleted: boolean }>(
-        "SELECT id, email, \"isDeleted\" FROM users ORDER BY id",
-      );
+      const rows = await db.query<{
+        id: string;
+        email: string;
+        isDeleted: boolean;
+      }>('SELECT id, email, "isDeleted" FROM users ORDER BY id');
       expect(rows.rows).toEqual([
-        { id: "00000000-0000-0000-0000-00000000000a", email: "dup@example.com", isDeleted: false },
-        { id: "00000000-0000-0000-0000-00000000000b", email: "dup@example.com", isDeleted: true },
-        { id: "00000000-0000-0000-0000-00000000000c", email: "dup@example.com", isDeleted: true },
-        { id: "00000000-0000-0000-0000-00000000000d", email: "solo@x.com", isDeleted: false },
+        {
+          id: "00000000-0000-0000-0000-00000000000a",
+          email: "dup@example.com",
+          isDeleted: false,
+        },
+        {
+          id: "00000000-0000-0000-0000-00000000000b",
+          email: "dup@example.com",
+          isDeleted: true,
+        },
+        {
+          id: "00000000-0000-0000-0000-00000000000c",
+          email: "dup@example.com",
+          isDeleted: true,
+        },
+        {
+          id: "00000000-0000-0000-0000-00000000000d",
+          email: "solo@x.com",
+          isDeleted: false,
+        },
       ]);
 
       const duplicate = await db

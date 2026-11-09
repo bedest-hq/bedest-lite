@@ -1,20 +1,14 @@
 import { describe, it, expect } from "bun:test";
 import { Elysia } from "elysia";
 import { password as bunPassword } from "bun";
-import {
-  createTestUser,
-  test_db,
-} from "@/common/tests/TestManager.test";
+import { createTestUser, test_db } from "@/common/tests/TestManager.test";
 import { ErrorHandler } from "@/infrastructure/error/ErrorHandler";
 import { RouterAuth } from "@f/auth/routers/RouterAuth";
 import { SUser } from "../schemas/SUser";
 import { RouterUser } from "./RouterUser";
 import { EUserRole } from "../enums/EUserRole";
 
-const app = new Elysia()
-  .use(ErrorHandler)
-  .use(RouterAuth)
-  .use(RouterUser);
+const app = new Elysia().use(ErrorHandler).use(RouterAuth).use(RouterUser);
 
 const send = (method: string, path: string, body: unknown, cookie?: string) =>
   app.handle(
@@ -35,7 +29,9 @@ const passwordFieldError = async (res: Response) => {
   expect(res.status).toBe(400);
   const body: unknown = await res.json();
   expect(body).toMatchObject({
-    details: expect.arrayContaining([expect.objectContaining({ field: "password" })]),
+    details: expect.arrayContaining([
+      expect.objectContaining({ field: "password" }),
+    ]),
   });
 };
 
@@ -49,8 +45,12 @@ describe("SEC-23: password policy", () => {
       password: pw,
     });
 
-    await passwordFieldError(await send("POST", "/user", user(ELEVEN), admin.headers.Cookie));
-    expect((await send("POST", "/user", user(TWELVE), admin.headers.Cookie)).status).toBe(200);
+    await passwordFieldError(
+      await send("POST", "/user", user(ELEVEN), admin.headers.Cookie),
+    );
+    expect(
+      (await send("POST", "/user", user(TWELVE), admin.headers.Cookie)).status,
+    ).toBe(200);
   });
 
   it("[SEC-23] POST /user rejects a password longer than 128 characters", async () => {
@@ -74,11 +74,22 @@ describe("SEC-23: password policy", () => {
     const path = `/user/${me.user.id}`;
 
     await passwordFieldError(
-      await send("PUT", path, { currentPassword: "test_password", password: ELEVEN }, me.headers.Cookie),
+      await send(
+        "PUT",
+        path,
+        { currentPassword: "test_password", password: ELEVEN },
+        me.headers.Cookie,
+      ),
     );
     expect(
-      (await send("PUT", path, { currentPassword: "test_password", password: TWELVE }, me.headers.Cookie))
-        .status,
+      (
+        await send(
+          "PUT",
+          path,
+          { currentPassword: "test_password", password: TWELVE },
+          me.headers.Cookie,
+        )
+      ).status,
     ).toBe(200);
   });
 
@@ -92,7 +103,10 @@ describe("SEC-23: password policy", () => {
       createdAt: new Date(),
     });
 
-    const res = await send("POST", "/auth/login", { email, password: "short1" });
+    const res = await send("POST", "/auth/login", {
+      email,
+      password: "short1",
+    });
     expect(res.status).toBe(200);
   });
 

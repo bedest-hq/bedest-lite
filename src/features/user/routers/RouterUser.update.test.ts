@@ -6,7 +6,10 @@ import { RouterOrganization } from "@f/organization/routers/RouterOrganization";
 import { RouterUser } from "./RouterUser";
 import { EUserRole } from "../enums/EUserRole";
 
-const app = new Elysia().use(ErrorHandler).use(RouterUser).use(RouterOrganization);
+const app = new Elysia()
+  .use(ErrorHandler)
+  .use(RouterUser)
+  .use(RouterOrganization);
 
 const put = (path: string, body: unknown, cookie: string) =>
   app.handle(

@@ -35,6 +35,8 @@
     "lint": "eslint 'src/**/*.{ts,js}' --max-warnings=0",
     "typecheck": "tsc --noEmit",
     "check": "bun run typecheck && bun run lint",
+    "format": "prettier --write \"src/**/*.ts\" drizzle.config.ts eslint.config.mjs",
+    "format:check": "prettier --check \"src/**/*.ts\" drizzle.config.ts eslint.config.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:migrate:prod": "bun run src/scripts/database/Migrate.ts",

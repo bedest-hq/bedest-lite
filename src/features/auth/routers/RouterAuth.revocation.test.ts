@@ -12,19 +12,11 @@ import { SUser } from "@f/user/schemas/SUser";
 import { EUserRole } from "@f/user/enums/EUserRole";
 import { RouterAuth } from "./RouterAuth";
 
-const app = new Elysia()
-  .use(ErrorHandler)
-  .use(RouterAuth)
-  .use(RouterUser);
+const app = new Elysia().use(ErrorHandler).use(RouterAuth).use(RouterUser);
 
 const PASSWORD = "test_password";
 
-const call = (
-  method: string,
-  path: string,
-  cookie?: string,
-  body?: unknown,
-) =>
+const call = (method: string, path: string, cookie?: string, body?: unknown) =>
   app.handle(
     new Request(`http://localhost${path}`, {
       method,
@@ -106,9 +98,9 @@ describe("SEC-08: revoked, deleted or demoted principals lose access", () => {
     expect(refreshed.status).toBe(200);
     const newCookie = cookiesOf(refreshed);
     expect(accessRole(newCookie)).toBe(EUserRole.USER);
-    expect(
-      (await call("GET", "/user?limit=10&page=1", newCookie)).status,
-    ).toBe(403);
+    expect((await call("GET", "/user?limit=10&page=1", newCookie)).status).toBe(
+      403,
+    );
   });
 
   it("[SEC-08] a role change through the API revokes the target's sessions", async () => {

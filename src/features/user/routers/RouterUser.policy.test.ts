@@ -43,7 +43,9 @@ describe("SEC-11: ADMIN cannot delete SYSTEM users or other ADMINs", () => {
       await createTestUser(EUserRole.ADMIN);
     }
     return (
-      await api.user({ id: target.user.id }).delete({}, { headers: actor.headers })
+      await api
+        .user({ id: target.user.id })
+        .delete({}, { headers: actor.headers })
     ).status;
   };
 
@@ -161,11 +163,13 @@ describe("SEC-12: self-service and role assignment", () => {
     const system = await createTestUser(EUserRole.SYSTEM);
     const admin = await createTestUser(EUserRole.ADMIN);
 
-    const promote = async (headers: Record<string, string>, role: EUserRole) => {
+    const promote = async (
+      headers: Record<string, string>,
+      role: EUserRole,
+    ) => {
       const target = await createTestUser(EUserRole.USER);
-      return (
-        await api.user({ id: target.user.id }).put({ role }, { headers })
-      ).status;
+      return (await api.user({ id: target.user.id }).put({ role }, { headers }))
+        .status;
     };
 
     expect(await promote(system.headers, EUserRole.ADMIN)).toBe(200);

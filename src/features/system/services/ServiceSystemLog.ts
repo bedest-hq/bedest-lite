@@ -4,7 +4,6 @@ import { logger } from "@/infrastructure/logger/logger";
 import { IUserApp } from "bedest-core";
 import { and, count, desc, eq, SQL } from "drizzle-orm";
 
-
 class ServiceSystemLog {
   async log(
     c: IUserApp,

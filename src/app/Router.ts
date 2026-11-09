@@ -10,7 +10,9 @@ import { RouterHealth } from "@f/health/routers/RouterHealth";
 import { TEnv } from "@/common/types/TEnv";
 import EnvManager from "@/infrastructure/env/EnvManager";
 
-export const createRouter = (env: Pick<TEnv, "NODE_ENV" | "ENABLE_API_DOCS">) => {
+export const createRouter = (
+  env: Pick<TEnv, "NODE_ENV" | "ENABLE_API_DOCS">,
+) => {
   const v1 = new Elysia({ prefix: "/v1" })
     .use(RouterAuth)
     .use(RouterUser)

@@ -4,7 +4,11 @@ import DbManager from "@/infrastructure/database/DbManager";
 import StorageManager from "@/infrastructure/storage/StorageManager";
 import ServiceHealth from "../services/ServiceHealth";
 
-const VProbe = t.Union([t.Literal("ok"), t.Literal("error"), t.Literal("disabled")]);
+const VProbe = t.Union([
+  t.Literal("ok"),
+  t.Literal("error"),
+  t.Literal("disabled"),
+]);
 
 /**
  * Liveness and readiness [FEAT-01]. Mounted under /api (outside /api/v1):

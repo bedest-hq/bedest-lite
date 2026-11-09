@@ -91,7 +91,11 @@ const errorText = (body: unknown): string | undefined => {
 const write = async (
   rt: IUserApp,
   cfg: IAuditConf,
-  row: { action: string; entityId: string | null; payload: Record<string, unknown> },
+  row: {
+    action: string;
+    entityId: string | null;
+    payload: Record<string, unknown>;
+  },
 ) => {
   await ServiceSystemLog.log(rt, {
     action: row.action,
@@ -154,7 +158,9 @@ export const PluginAudit = new Elysia({ name: "PluginAudit" }).macro({
           action: failed ? `FAILED_${method}` : (cfg.action ?? method),
           // The URL's or the created entity's id, never the actor [BUG-11].
           entityId:
-            getId(params) ?? (failed ? undefined : getId(responseValue)) ?? null,
+            getId(params) ??
+            (failed ? undefined : getId(responseValue)) ??
+            null,
           payload: {
             statusCode,
             ...(error === undefined ? {} : { error }),

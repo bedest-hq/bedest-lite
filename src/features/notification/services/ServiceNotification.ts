@@ -1,4 +1,5 @@
 import { UtilHttp } from "@/common/utils/UtilHttp";
+import { UtilCursor } from "@/common/utils/UtilCursor";
 import { SNotification } from "../schemas/SNotification";
 import { and, count, desc, eq } from "drizzle-orm";
 
@@ -7,8 +8,15 @@ import { IUserApp } from "bedest-core";
 class ServiceNotification {
   async getAll(
     c: IUserApp,
-    query: { limit: number; page: number; unreadOnly?: boolean },
+    query: {
+      limit: number;
+      page: number;
+      unreadOnly?: boolean;
+      cursor?: string;
+    },
   ) {
+    const cursor =
+      query.cursor === undefined ? undefined : UtilCursor.decode(query.cursor);
     const filters = [
       eq(SNotification.userId, c.session.userId),
       eq(SNotification.isDeleted, false),
@@ -18,28 +26,48 @@ class ServiceNotification {
       filters.push(eq(SNotification.isRead, false));
     }
 
+    const select = () =>
+      c.db
+        .select({
+          row: {
+            id: SNotification.id,
+            event: SNotification.event,
+            payload: SNotification.payload,
+            isRead: SNotification.isRead,
+            readAt: SNotification.readAt,
+            createdAt: SNotification.createdAt,
+          },
+          cursorKey: UtilCursor.key(SNotification.createdAt),
+        })
+        .from(SNotification)
+        .orderBy(desc(SNotification.createdAt), desc(SNotification.id))
+        .$dynamic();
+
+    // Keyset mode: no COUNT, no OFFSET [PERF-02].
+    if (cursor) {
+      const rows = await select()
+        .where(
+          and(
+            ...filters,
+            UtilCursor.after(SNotification.createdAt, SNotification.id, cursor),
+          ),
+        )
+        .limit(query.limit + 1);
+      const { data, nextCursor } = UtilCursor.page(rows, query.limit);
+      return { data, meta: { limit: query.limit, nextCursor } };
+    }
+
     const [totalRes] = await c.db
       .select({ count: count() })
       .from(SNotification)
       .where(and(...filters));
 
     const total = Number(totalRes.count);
-    const offset = (query.page - 1) * query.limit;
-
-    const data = await c.db
-      .select({
-        id: SNotification.id,
-        event: SNotification.event,
-        payload: SNotification.payload,
-        isRead: SNotification.isRead,
-        readAt: SNotification.readAt,
-        createdAt: SNotification.createdAt,
-      })
-      .from(SNotification)
+    const rows = await select()
       .where(and(...filters))
-      .orderBy(desc(SNotification.createdAt))
-      .limit(query.limit)
-      .offset(offset);
+      .limit(query.limit + 1)
+      .offset((query.page - 1) * query.limit);
+    const { data, nextCursor } = UtilCursor.page(rows, query.limit);
 
     return {
       data,
@@ -48,6 +76,7 @@ class ServiceNotification {
         page: query.page,
         limit: query.limit,
         totalPages: Math.ceil(total / query.limit),
+        nextCursor,
       },
     };
   }

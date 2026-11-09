@@ -2,7 +2,9 @@ import { UtilHttp } from "@/common/utils/UtilHttp";
 import { and, eq, sql } from "drizzle-orm";
 import { SUser } from "../../user/schemas/SUser";
 import { UtilEmail } from "@f/user/utils/UtilEmail";
-import ServiceSession from "@/features/session/services/ServiceSession";
+import ServiceSession, {
+  type ISessionMeta,
+} from "@/features/session/services/ServiceSession";
 import ServiceSystem from "@f/system/services/ServiceSystem";
 import { EUserRole } from "@f/user/enums/EUserRole";
 
@@ -108,6 +110,7 @@ class ServiceAuth {
 
     const session = await ServiceSession.create(c, {
       userId: user.userId,
+      meta,
     });
 
     void ServiceSystemLog.log(
@@ -153,11 +156,14 @@ class ServiceAuth {
    * database (never copied from the presented token), so deleted users and
    * role changes take effect at the next refresh.
    */
-  async refresh(c: IApp, sessionId: string) {
+  async refresh(c: IApp, sessionId: string, meta?: ISessionMeta) {
     // Delete-and-reinsert in one transaction [SEC-09]; the principal is
     // re-read from the database inside it [SEC-08].
-    const rotated = await ServiceSession.rotate(c, sessionId, (tx, userId) =>
-      this.loadPrincipal(tx, userId),
+    const rotated = await ServiceSession.rotate(
+      c,
+      sessionId,
+      (tx, userId) => this.loadPrincipal(tx, userId),
+      meta,
     );
 
     if (!rotated) {

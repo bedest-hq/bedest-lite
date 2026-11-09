@@ -92,6 +92,13 @@
       "when": 1794207854562,
       "tag": "0012_perf_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794220853664,
+      "tag": "0013_audit_logs_immutable",
+      "breakpoints": true
     }
   ]
 }

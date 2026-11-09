@@ -70,17 +70,13 @@ class ServiceStorage extends ServiceBase<typeof SStorage, string> {
       name: SStorage.name,
     });
 
-    if (!fileRecord) {
-      throw UtilHttp.fail(404);
+    // Streamed from the provider; a missing object is a 404 [BUG-18].
+    const object = await StorageManager.download(fileRecord.key);
+    if (!object) {
+      throw UtilHttp.fail(404, "File content not found");
     }
 
-    const fileBlob = await StorageManager.download(fileRecord.key);
-
-    if (!fileBlob) {
-      throw UtilHttp.fail(404);
-    }
-
-    return { fileBlob, metadata: fileRecord };
+    return { object, metadata: fileRecord };
   }
 
   /** Soft delete only; the object is removed by the purge job [BUG-03]. */

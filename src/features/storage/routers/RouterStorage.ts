@@ -2,6 +2,7 @@ import { Elysia, t } from "elysia";
 import Context from "@/app/Context";
 import ServiceStorage from "../services/ServiceStorage";
 import { SStorage } from "../schemas/SStorage";
+import { storageFileResponse } from "../utils/UtilStorage";
 import { UtilRouter, VId, VQuery, VString } from "bedest-core";
 
 export const RouterStorage = new Elysia({
@@ -66,38 +67,23 @@ export const RouterStorage = new Elysia({
   )
   .get(
     "/:id/download",
-    async ({ params, userRuntime, set }) => {
-      const { fileBlob, metadata } = await ServiceStorage.get(
+    async ({ params, userRuntime }) => {
+      const { object, metadata } = await ServiceStorage.get(
         userRuntime,
         params.id,
       );
-
-      set.headers["Content-Type"] = metadata.mimeType;
-
-      const encodedName = encodeURIComponent(metadata.name);
-      set.headers["Content-Disposition"] =
-        `attachment; filename*=UTF-8''${encodedName}`;
-
-      return fileBlob;
+      return storageFileResponse(object, metadata, "attachment");
     },
     { params: t.Object({ id: VId }) },
   )
   .get(
     "/:id/view",
-    async ({ params, userRuntime, set }) => {
-      const { fileBlob, metadata } = await ServiceStorage.get(
+    async ({ params, userRuntime }) => {
+      const { object, metadata } = await ServiceStorage.get(
         userRuntime,
         params.id,
       );
-
-      set.headers["Content-Type"] = metadata.mimeType;
-
-      const encodedName = encodeURIComponent(metadata.name);
-
-      set.headers["Content-Disposition"] =
-        `inline; filename*=UTF-8''${encodedName}`;
-
-      return fileBlob;
+      return storageFileResponse(object, metadata, "inline");
     },
     { params: t.Object({ id: VId }) },
   );

@@ -10,8 +10,8 @@ class ServiceSystemLog {
     params: {
       action: string;
       entity: string;
-      entityId: string;
-      payload: unknown;
+      entityId: string | null;
+      payload: Record<string, unknown>;
     },
   ) {
     try {
@@ -20,7 +20,7 @@ class ServiceSystemLog {
         action: params.action,
         entity: params.entity,
         entityId: params.entityId,
-        payload: params.payload as Record<string, unknown>,
+        payload: params.payload,
       });
     } catch (err) {
       logger.error({ err, params }, "Audit Log insertion failed");

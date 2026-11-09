@@ -43,7 +43,7 @@ export const RouterOrganization = new Elysia({
             {
               body: VOrganizationUpdate,
               response: VOrganization,
-              audit: true,
+              audit: { entity: "organization" },
             },
           ),
       ),

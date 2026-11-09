@@ -15,7 +15,8 @@ export const SSystemLog = pgTable(
 
     action: varchar({ length: 100 }).notNull(),
     entity: varchar({ length: 100 }).notNull(),
-    entityId: uuid().notNull(),
+    // Null when the request names no entity (never the actor) [BUG-11].
+    entityId: uuid(),
 
     payload: jsonb().$type<Record<string, unknown>>().notNull(),
 

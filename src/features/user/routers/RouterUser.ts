@@ -63,7 +63,7 @@ export const RouterUser = new Elysia({
         // Assigning a role goes through UtilUserPolicy [SEC-12].
         role: t.Optional(VUserRole),
       }),
-      audit: true,
+      audit: { entity: "user" },
     },
   )
   .guard(
@@ -104,7 +104,7 @@ export const RouterUser = new Elysia({
               role: t.Enum(EUserRole),
               password: VPassword,
             }),
-            audit: true,
+            audit: { entity: "user" },
             response: t.Object({ id: VId }),
           },
         )
@@ -117,7 +117,7 @@ export const RouterUser = new Elysia({
             params: t.Object({
               id: VId,
             }),
-            audit: true,
+            audit: { entity: "user" },
           },
         ),
   );

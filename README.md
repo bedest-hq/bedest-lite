@@ -95,6 +95,16 @@ Even though Bedest Lite is single-tenant, it securely leverages the generic foun
 | `IApp`, `IUserApp` | Context interfaces used by every service method |
 | `VId`, `VEmail`, `VString`, `VQuery` | Common Elysia/TypeBox validation primitives |
 
+### Error responses
+
+Every error has the same JSON body [BUG-14]:
+
+```json
+{ "error": "Bad Request", "message": "Validation failed", "details": [{ "field": "email", "message": "Expected string to match 'email' format" }] }
+```
+
+`error` is the HTTP reason phrase, `message` an optional explanation and `details` the invalid fields of a validation error. Throw HTTP errors with `UtilHttp.fail(status, message?, details?)`; the global `ErrorHandler` turns everything else (unknown routes, malformed bodies, invalid cookie signatures, wrong file types, bare `status()` calls, Postgres errors such as `23505` → 409 or `22001` → 400) into the same shape and answers unexpected errors with `{ "error": "Internal Server Error" }` only. The type is exported for clients as `IApiError`.
+
 ### Semantic Status Codes & Guards
 
 The API follows strict REST standards enforced by Elysia macros:

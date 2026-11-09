@@ -1,6 +1,7 @@
+import { UtilHttp } from "@/common/utils/UtilHttp";
 import { SOrganization } from "../schemas/SOrganization";
 import { IApp, ServiceBase } from "bedest-core";
-import { status } from "elysia";
+
 
 class ServiceOrganization extends ServiceBase<typeof SOrganization, string> {
   constructor() {
@@ -36,7 +37,7 @@ class ServiceOrganization extends ServiceBase<typeof SOrganization, string> {
     );
 
     if (orgs.data.length === 0) {
-      throw status("Not Found", { message: "Organization profile not found" });
+      throw UtilHttp.fail(404, "Organization profile not found");
     }
 
     return orgs.data[0];

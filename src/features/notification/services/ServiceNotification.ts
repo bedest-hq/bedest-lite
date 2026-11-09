@@ -1,7 +1,8 @@
+import { UtilHttp } from "@/common/utils/UtilHttp";
 import WsManager from "@/infrastructure/websocket/WsManager";
 import { SNotification } from "../schemas/SNotification";
 import { and, count, desc, eq } from "drizzle-orm";
-import { status } from "elysia";
+
 import { logger } from "@/infrastructure/logger/logger";
 import { IUserApp } from "bedest-core";
 
@@ -89,11 +90,11 @@ class ServiceNotification {
       .limit(1);
 
     if (!existing) {
-      throw status("Not Found");
+      throw UtilHttp.fail(404);
     }
 
     if (existing.userId !== c.session.userId) {
-      throw status("Forbidden");
+      throw UtilHttp.fail(403);
     }
 
     await c.db

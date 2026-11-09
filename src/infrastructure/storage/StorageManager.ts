@@ -1,6 +1,7 @@
+import { UtilHttp } from "@/common/utils/UtilHttp";
 import EnvManager from "../env/EnvManager";
 import { logger } from "../logger/logger";
-import { status } from "elysia";
+
 import { IProvider } from "./interfaces/IProvider";
 import { ProviderLocal } from "./providers/ProviderLocal";
 import { ProviderS3 } from "./providers/ProviderS3";
@@ -42,7 +43,7 @@ class StorageManager {
     contentType: string,
   ): Promise<void> {
     if (!this.activeProvider) {
-      throw status("Service Unavailable");
+      throw UtilHttp.fail(503);
     }
     await this.activeProvider.upload(key, body, contentType);
   }
@@ -56,7 +57,7 @@ class StorageManager {
 
   async download(key: string): Promise<Blob | null> {
     if (!this.activeProvider) {
-      throw status("Service Unavailable");
+      throw UtilHttp.fail(503);
     }
     return await this.activeProvider.download(key);
   }

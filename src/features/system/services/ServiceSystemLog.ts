@@ -1,8 +1,9 @@
+import { UtilHttp } from "@/common/utils/UtilHttp";
 import { SSystemLog } from "../schemas/SSystemLog";
 import { logger } from "@/infrastructure/logger/logger";
 import { IUserApp } from "bedest-core";
 import { and, count, desc, eq, SQL } from "drizzle-orm";
-import { status } from "elysia";
+
 
 class ServiceSystemLog {
   async log(
@@ -96,7 +97,7 @@ class ServiceSystemLog {
       .limit(1);
 
     if (!res) {
-      throw status("Not Found");
+      throw UtilHttp.fail(404);
     }
 
     return res;

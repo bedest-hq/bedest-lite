@@ -1,5 +1,6 @@
+import { UtilHttp } from "@/common/utils/UtilHttp";
 import { SStorage } from "../schemas/SStorage";
-import { status } from "elysia";
+
 import { and, eq, type SQL } from "drizzle-orm";
 import StorageManager from "@/infrastructure/storage/StorageManager";
 import { IApp, IUserApp, ServiceBase } from "bedest-core";
@@ -67,13 +68,13 @@ class ServiceStorage extends ServiceBase<typeof SStorage, string> {
     });
 
     if (!fileRecord) {
-      throw status("Not Found");
+      throw UtilHttp.fail(404);
     }
 
     const fileBlob = await StorageManager.download(fileRecord.key);
 
     if (!fileBlob) {
-      throw status("Not Found");
+      throw UtilHttp.fail(404);
     }
 
     return { fileBlob, metadata: fileRecord };
@@ -93,14 +94,11 @@ class ServiceStorage extends ServiceBase<typeof SStorage, string> {
     const privileged =
       c.session.isSuperUser || c.session.role === EUserRole.ADMIN;
     if (!privileged && file.uploadedBy !== c.session.userId) {
-      throw status(403, {
-        error: "Forbidden",
-        message: "Only the uploader or an admin can delete this file",
-      });
+      throw UtilHttp.fail(403, "Only the uploader or an admin can delete this file");
     }
 
     if (await this.isReferenced(c, id)) {
-      throw status(409, { error: "Conflict", message: "File is in use" });
+      throw UtilHttp.fail(409, "File is in use");
     }
 
     // Soft delete only; the object is removed by the purge job [BUG-03].

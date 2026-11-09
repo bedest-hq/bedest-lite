@@ -25,6 +25,26 @@ interface IAuditErrorContext {
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Requests already audited. With the global ErrorHandler a failure only
+ * reaches afterResponse; without it only the route error hook runs, so
+ * both hooks write and this set keeps it to one row per request.
+ */
+const audited = new WeakSet<Request>();
+
+/** Status of a failed request seen by the error hook. */
+const statusOf = (c: IAuditErrorContext): number => {
+  if (isObj(c.error) && typeof c.error.code === "number") {
+    return c.error.code;
+  }
+  if (typeof c.code === "number") {
+    return c.code;
+  }
+  return typeof c.set.status === "number" && c.set.status >= 400
+    ? c.set.status
+    : 500;
+};
+
 const isObj = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null;
 
@@ -57,20 +77,15 @@ const getMeta = (body: unknown) => {
   return Object.keys(meta).length ? meta : { info: "[NO_FILE]" };
 };
 
-const statusOf = (c: IAuditErrorContext): number => {
-  if (typeof c.set.status === "number" && c.set.status !== 500) {
-    return c.set.status;
+/** The text of an error envelope (message, else reason phrase). */
+const errorText = (body: unknown): string | undefined => {
+  if (!isObj(body)) {
+    return undefined;
   }
-  if (typeof c.code === "number") {
-    return c.code;
+  if (typeof body.message === "string") {
+    return body.message;
   }
-  if (isObj(c.error) && typeof c.error.code === "number") {
-    return c.error.code;
-  }
-  if (isObj(c.error) && typeof c.error.status === "number") {
-    return c.error.status;
-  }
-  return 500;
+  return typeof body.error === "string" ? body.error : undefined;
 };
 
 const write = async (
@@ -89,16 +104,20 @@ const write = async (
 export const PluginAudit = new Elysia({ name: "PluginAudit" }).macro({
   audit(cfg: IAuditConf) {
     const onError = (c: IAuditErrorContext) => {
-      if (!c.userRuntime || c.request.method === "GET") {
+      const { request } = c;
+      if (!c.userRuntime || request.method === "GET" || audited.has(request)) {
         return;
       }
+      audited.add(c.request);
       void write(c.userRuntime, cfg, {
         action: `FAILED_${c.request.method}`,
         entityId: getId(c.params) ?? null,
         payload: {
-          error: c.error instanceof Error ? c.error.message : String(c.error),
-          errorCode: c.code,
           statusCode: statusOf(c),
+          error:
+            c.error instanceof Error
+              ? c.error.message
+              : errorText(isObj(c.error) ? c.error.response : undefined),
           body: UtilAudit.scrub(c.body),
         },
       });
@@ -106,16 +125,18 @@ export const PluginAudit = new Elysia({ name: "PluginAudit" }).macro({
 
     return {
       afterResponse({
-        request: { method, headers },
+        request,
         params,
         body,
-        response,
+        responseValue,
         userRuntime,
         set,
-      }: Context & { userRuntime?: IUserApp; response?: unknown }) {
-        if (!userRuntime || method === "GET") {
+      }: Context & { userRuntime?: IUserApp; responseValue?: unknown }) {
+        const { method, headers } = request;
+        if (!userRuntime || method === "GET" || audited.has(request)) {
           return;
         }
+        audited.add(request);
 
         const isMulti = headers.get("content-type")?.includes("multipart");
         const scrubbed = UtilAudit.scrub(body);
@@ -125,12 +146,18 @@ export const PluginAudit = new Elysia({ name: "PluginAudit" }).macro({
             ? scrubbed
             : {};
 
+        const statusCode = typeof set.status === "number" ? set.status : 200;
+        const failed = statusCode >= 400;
+        const error = failed ? errorText(responseValue) : undefined;
+
         void write(userRuntime, cfg, {
-          action: cfg.action ?? method,
+          action: failed ? `FAILED_${method}` : (cfg.action ?? method),
           // The URL's or the created entity's id, never the actor [BUG-11].
-          entityId: getId(params) ?? getId(response) ?? null,
+          entityId:
+            getId(params) ?? (failed ? undefined : getId(responseValue)) ?? null,
           payload: {
-            statusCode: typeof set.status === "number" ? set.status : 200,
+            statusCode,
+            ...(error === undefined ? {} : { error }),
             ...payloadData,
           },
         });

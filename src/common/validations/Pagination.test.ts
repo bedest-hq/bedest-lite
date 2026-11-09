@@ -5,7 +5,7 @@ import {
   createTestUser,
   test_db,
   test_user,
-  testHeaders,
+  testSystemHeaders,
 } from "@/common/tests/TestManager.test";
 import { ErrorHandler } from "@/infrastructure/error/ErrorHandler";
 import { EUserRole } from "@f/user/enums/EUserRole";
@@ -76,7 +76,7 @@ describe("PERF-02: cursor pagination", () => {
         VALUES (${row.id}, ${test_user.id}, ${action}, 'perf', '{}'::jsonb, ${row.createdAt}::timestamptz)
       `);
     }
-    const cookie = (await testHeaders()).Cookie;
+    const cookie = (await testSystemHeaders()).Cookie;
     const ids = await walk(`/log?action=${action}`, cookie);
     expect(ids).toEqual(expectedOrder(rows));
   });
@@ -101,7 +101,7 @@ describe("PERF-02: cursor pagination", () => {
   });
 
   it("[PERF-02] a malformed cursor → 400 'Invalid cursor'", async () => {
-    const cookie = (await testHeaders()).Cookie;
+    const cookie = (await testSystemHeaders()).Cookie;
     for (const cursor of [
       "not-base64!",
       UtilCursor.encode({ createdAt: "yesterday", id: "x" }),

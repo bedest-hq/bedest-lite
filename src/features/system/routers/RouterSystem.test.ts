@@ -1,13 +1,13 @@
 import { describe, it, expect } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import { testHeaders } from "@/common/tests/TestManager.test";
+import { testSystemHeaders } from "@/common/tests/TestManager.test";
 import { RouterSystem } from "./RouterSystem";
 
 const api = treaty(RouterSystem);
 
 describe("RouterSystem", () => {
   it("Get initial maintenance status", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
 
     const res = await api.system.maintenance.get({
       headers,
@@ -20,7 +20,7 @@ describe("RouterSystem", () => {
   });
 
   it("Enable maintenance mode", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
 
     const res = await api.system.maintenance.post(
       {
@@ -38,7 +38,7 @@ describe("RouterSystem", () => {
   });
 
   it("Disable maintenance mode", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
 
     const res = await api.system.maintenance.post(
       {

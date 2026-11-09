@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import {
   createTestUser,
   test_db,
-  testHeaders,
+  testSystemHeaders,
 } from "@/common/tests/TestManager.test";
 import { ErrorHandler } from "@/infrastructure/error/ErrorHandler";
 import { RouterUser } from "@f/user/routers/RouterUser";
@@ -72,7 +72,7 @@ describe("SEC-08: revoked, deleted or demoted principals lose access", () => {
     const cookie = await login(user.email);
     expect((await call("GET", "/user/self", cookie)).status).toBe(200);
 
-    const system = await testHeaders();
+    const system = await testSystemHeaders();
     expect(
       (await call("DELETE", `/user/${user.id}`, system.Cookie)).status,
     ).toBe(200);
@@ -107,7 +107,7 @@ describe("SEC-08: revoked, deleted or demoted principals lose access", () => {
     const { user } = await createTestUser(EUserRole.ADMIN);
     const cookie = await login(user.email);
 
-    const system = await testHeaders();
+    const system = await testSystemHeaders();
     expect(
       (
         await call("PUT", `/user/${user.id}`, system.Cookie, {
@@ -143,7 +143,7 @@ describe("SEC-08: revoked, deleted or demoted principals lose access", () => {
   it("[SEC-08] an admin password reset revokes every session of the target", async () => {
     const { user } = await createTestUser(EUserRole.USER);
     const cookie = await login(user.email);
-    const system = await testHeaders();
+    const system = await testSystemHeaders();
 
     expect(
       (

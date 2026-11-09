@@ -1,6 +1,9 @@
 import { describe, it, expect } from "bun:test";
 import { Elysia } from "elysia";
-import { createTestUser, testHeaders } from "@/common/tests/TestManager.test";
+import {
+  createTestUser,
+  testSystemHeaders,
+} from "@/common/tests/TestManager.test";
 import { ErrorHandler } from "@/infrastructure/error/ErrorHandler";
 import { RouterOrganization } from "@f/organization/routers/RouterOrganization";
 import { RouterUser } from "./RouterUser";
@@ -42,7 +45,11 @@ describe("BUG-02: empty update payloads", () => {
   });
 
   it("[BUG-02] PUT /organization with {} → 400", async () => {
-    const res = await put("/organization", {}, (await testHeaders()).Cookie);
+    const res = await put(
+      "/organization",
+      {},
+      (await testSystemHeaders()).Cookie,
+    );
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual(NO_FIELDS);
   });

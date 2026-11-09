@@ -1,13 +1,13 @@
 import { describe, it, expect } from "bun:test";
 import { treaty } from "@elysiajs/eden";
-import { testHeaders } from "@/common/tests/TestManager.test";
+import { testSystemHeaders } from "@/common/tests/TestManager.test";
 import { RouterOrganization } from "./RouterOrganization";
 
 const api = treaty(RouterOrganization);
 
 describe("RouterOrganization", () => {
   it("Get organization profile", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
 
     const res = await api.organization.get({ headers });
 
@@ -39,7 +39,7 @@ describe("RouterOrganization", () => {
   });
 
   it("Update organization profile", async () => {
-    const headers = await testHeaders();
+    const headers = await testSystemHeaders();
 
     const res = await api.organization.put(
       {

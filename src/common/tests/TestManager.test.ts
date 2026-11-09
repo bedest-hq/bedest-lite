@@ -10,6 +10,7 @@ import { EUserRole } from "@/features/user/enums/EUserRole";
 import Elysia from "elysia";
 import jwt from "@elysiajs/jwt";
 import { password } from "bun";
+import { rm } from "node:fs/promises";
 import { SSession } from "@f/session/schemas/SSession";
 import { JWT_AUDIENCE } from "@f/auth/validations/VJwtPayload";
 
@@ -170,8 +171,15 @@ const test_signer = new Elysia().use(
   }),
 );
 
+/** The default principal: a plain USER [TST-01]. */
 export let test_user: typeof SUser.$inferSelect;
+/** A SYSTEM user, for tests that need it explicitly. */
+export let test_system_user: typeof SUser.$inferSelect;
 export { test_db, test_env };
+
+/** Headers of the SYSTEM test user (explicit opt-in) [TST-01]. */
+export const testSystemHeaders = async () =>
+  await testHeaders(test_system_user);
 
 export const testHeaders = async (user = test_user) => {
   if (!user) {
@@ -224,18 +232,30 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-  const [insertedUser] = await test_db
+  // Unique per test: nothing may rely on fixed values [TST-06].
+  const suffix = crypto.randomUUID().slice(0, 8);
+  const [insertedUser, insertedSystemUser] = await test_db
     .insert(SUser)
-    .values({
-      name: "Test User",
-      email: "text@example.com",
-      password: pass,
-      role: EUserRole.SYSTEM,
-      createdAt: new Date(),
-    })
+    .values([
+      {
+        name: "Test User",
+        email: `user-${suffix}@example.com`,
+        password: pass,
+        role: EUserRole.USER,
+        createdAt: new Date(),
+      },
+      {
+        name: "Test System User",
+        email: `system-${suffix}@example.com`,
+        password: pass,
+        role: EUserRole.SYSTEM,
+        createdAt: new Date(),
+      },
+    ])
     .returning();
 
   test_user = insertedUser;
+  test_system_user = insertedSystemUser;
 
   const { SOrganization } =
     await import("@f/organization/schemas/SOrganization");
@@ -268,4 +288,6 @@ afterEach(async () => {
 
 afterAll(async () => {
   await test_client.close();
+  // Local-provider files written during the run [TST-06].
+  await rm("./test_uploads", { recursive: true, force: true });
 });

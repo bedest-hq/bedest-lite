@@ -1,40 +1,10 @@
 import { UtilHttp } from "@/common/utils/UtilHttp";
-import WsManager from "@/infrastructure/websocket/WsManager";
 import { SNotification } from "../schemas/SNotification";
 import { and, count, desc, eq } from "drizzle-orm";
 
-import { logger } from "@/infrastructure/logger/logger";
 import { IUserApp } from "bedest-core";
 
 class ServiceNotification {
-  /**
-   * Persist a notification for a specific user and push it over WebSocket.
-   * Failures in either step are logged and swallowed — notifications are
-   * best-effort and must never break the calling flow.
-   */
-  async sendToUser(
-    c: IUserApp,
-    targetUserId: string,
-    event: string,
-    payload?: Record<string, unknown>,
-  ) {
-    try {
-      await c.db.insert(SNotification).values({
-        userId: targetUserId,
-        event,
-        payload: payload ?? {},
-        createdAt: c.nowDatetime,
-      });
-    } catch (err) {
-      logger.error(
-        { err, targetUserId, event },
-        "Failed to persist notification",
-      );
-    }
-
-    WsManager.publishToUser(targetUserId, event, payload);
-  }
-
   async getAll(
     c: IUserApp,
     query: { limit: number; page: number; unreadOnly?: boolean },

@@ -98,8 +98,10 @@ describe("FEAT-01: health endpoints", () => {
 
 describe("FEAT-01: mount point", () => {
   it("[FEAT-01] the application router serves /api/health/live (outside /api/v1)", async () => {
-    const { Router } = await import("@/app/Router");
-    const router = new Elysia().use(Router);
+    // The router is built from an explicit environment [QLT-01].
+    const { createRouter } = await import("@/app/Router");
+    const { test_env } = await import("@/common/tests/TestManager.test");
+    const router = new Elysia().use(createRouter(test_env));
     const res = await router.handle(
       new Request("http://localhost/api/health/live"),
     );

@@ -8,7 +8,6 @@ import { RouterNotification } from "@f/notification/routers/RouterNotification";
 import { RouterOrganization } from "@f/organization/routers/RouterOrganization";
 import { RouterHealth } from "@f/health/routers/RouterHealth";
 import { TEnv } from "@/common/types/TEnv";
-import EnvManager from "@/infrastructure/env/EnvManager";
 
 export const createRouter = (
   env: Pick<TEnv, "NODE_ENV" | "ENABLE_API_DOCS">,
@@ -30,5 +29,3 @@ export const createRouter = (
 
   return api;
 };
-
-export const Router = createRouter(EnvManager.get());

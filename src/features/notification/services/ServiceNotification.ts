@@ -1,9 +1,9 @@
 import { UtilHttp } from "@/common/utils/UtilHttp";
 import { UtilCursor } from "@/common/utils/UtilCursor";
 import { SNotification } from "../schemas/SNotification";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, lt } from "drizzle-orm";
 
-import { IUserApp } from "bedest-core";
+import { IApp, IUserApp } from "bedest-core";
 
 class ServiceNotification {
   async getAll(
@@ -117,6 +117,24 @@ class ServiceNotification {
       );
 
     return { success: true };
+  }
+
+  /**
+   * Job notifications.retention [FEAT-08]: soft-deletes notifications
+   * created before `olderThan` (NOTIFICATION_RETENTION_DAYS).
+   */
+  async applyRetention(c: IApp, olderThan: Date) {
+    const updated = await c.db
+      .update(SNotification)
+      .set({ isDeleted: true, deletedAt: c.nowDatetime })
+      .where(
+        and(
+          eq(SNotification.isDeleted, false),
+          lt(SNotification.createdAt, olderThan),
+        ),
+      )
+      .returning({ id: SNotification.id });
+    return { count: updated.length };
   }
 }
 

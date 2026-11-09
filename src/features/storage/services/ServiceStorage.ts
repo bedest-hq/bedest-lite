@@ -1,7 +1,8 @@
 import { UtilHttp } from "@/common/utils/UtilHttp";
 import { SStorage } from "../schemas/SStorage";
 
-import { and, eq, type SQL } from "drizzle-orm";
+import { and, eq, lt, type SQL } from "drizzle-orm";
+import { logger } from "@/infrastructure/logger/logger";
 import StorageManager from "@/infrastructure/storage/StorageManager";
 import { IApp, IUserApp, ServiceBase } from "bedest-core";
 import { EUserRole } from "@f/user/enums/EUserRole";
@@ -116,11 +117,21 @@ class ServiceStorage extends ServiceBase<typeof SStorage, string> {
   }
 
   /** Whether an active user (avatar) or organization (logo) points at it. */
-  private async isReferenced(c: IApp, id: string): Promise<boolean> {
+  private async isReferenced(
+    c: IApp,
+    id: string,
+    includeDeleted = false,
+  ): Promise<boolean> {
+    // Soft-deleted rows still hold their foreign keys (purge must skip them).
     const [avatar] = await c.db
       .select({ id: SUser.id })
       .from(SUser)
-      .where(and(eq(SUser.avatarId, id), eq(SUser.isDeleted, false)))
+      .where(
+        and(
+          eq(SUser.avatarId, id),
+          includeDeleted ? undefined : eq(SUser.isDeleted, false),
+        ),
+      )
       .limit(1);
     if (avatar) {
       return true;
@@ -129,10 +140,77 @@ class ServiceStorage extends ServiceBase<typeof SStorage, string> {
       .select({ id: SOrganization.id })
       .from(SOrganization)
       .where(
-        and(eq(SOrganization.logoId, id), eq(SOrganization.isDeleted, false)),
+        and(
+          eq(SOrganization.logoId, id),
+          includeDeleted ? undefined : eq(SOrganization.isDeleted, false),
+        ),
       )
       .limit(1);
     return logo !== undefined;
+  }
+
+  /**
+   * Job storage.purgeDeleted [FEAT-08]: for files soft-deleted before
+   * `olderThan`, delete the object, then hard-delete the row unless a user
+   * (avatar) or the organization (logo) still references it. A failed
+   * object delete keeps the row for the next run.
+   */
+  async purgeDeleted(c: IApp, olderThan: Date) {
+    const rows = await c.db
+      .select({ id: SStorage.id, key: SStorage.key })
+      .from(SStorage)
+      .where(
+        and(eq(SStorage.isDeleted, true), lt(SStorage.deletedAt, olderThan)),
+      );
+    let purged = 0;
+    for (const row of rows) {
+      if (await this.isReferenced(c, row.id, true)) {
+        continue;
+      }
+      try {
+        await StorageManager.delete(row.key);
+      } catch (err) {
+        logger.warn(
+          { err, id: row.id },
+          "storage.purgeDeleted: object delete failed",
+        );
+        continue;
+      }
+      await c.db.delete(SStorage).where(eq(SStorage.id, row.id));
+      purged++;
+    }
+    return { purged };
+  }
+
+  /**
+   * Job storage.cleanupPending [FEAT-08]: uploads still PENDING after
+   * `olderThan` never completed; remove their object (if any) and row.
+   */
+  async cleanupPending(c: IApp, olderThan: Date) {
+    const rows = await c.db
+      .select({ id: SStorage.id, key: SStorage.key })
+      .from(SStorage)
+      .where(
+        and(
+          eq(SStorage.status, EStorageStatus.PENDING),
+          lt(SStorage.createdAt, olderThan),
+        ),
+      );
+    let removed = 0;
+    for (const row of rows) {
+      try {
+        await StorageManager.delete(row.key);
+      } catch (err) {
+        logger.warn(
+          { err, id: row.id },
+          "storage.cleanupPending: object delete failed",
+        );
+        continue;
+      }
+      await c.db.delete(SStorage).where(eq(SStorage.id, row.id));
+      removed++;
+    }
+    return { removed };
   }
 }
 

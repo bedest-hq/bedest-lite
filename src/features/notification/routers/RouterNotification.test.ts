@@ -12,6 +12,25 @@ import { SNotification } from "../schemas/SNotification";
 
 const api = treaty(RouterNotification);
 
+/**
+ * Bun's WebSocket constructor takes `{ headers }` (Bun.WebSocketOptions),
+ * but with the default DOM lib TypeScript only sees the browser overload;
+ * the guard names the runtime constructor's real signature (no cast).
+ */
+type TBunWebSocketCtor = new (
+  url: string,
+  options: Bun.WebSocketOptions,
+) => WebSocket;
+const isBunWebSocketCtor = (ctor: unknown): ctor is TBunWebSocketCtor =>
+  typeof ctor === "function";
+const openWebSocket = (url: string, headers: Record<string, string>) => {
+  const ctor: unknown = globalThis.WebSocket;
+  if (!isBunWebSocketCtor(ctor)) {
+    throw new Error("WebSocket is not available");
+  }
+  return new ctor(url, { headers });
+};
+
 describe("RouterNotification", () => {
   let wsUrl: string;
   let serverApp: ReturnType<typeof createApp>;
@@ -145,10 +164,7 @@ describe("RouterNotification", () => {
     await new Promise<void>((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error("WS timeout")), 2000);
 
-      const ws = new WebSocket(wsUrl, {
-        // @ts-expect-error - Bun WebSocket accepts headers here
-        headers,
-      });
+      const ws = openWebSocket(wsUrl, headers);
 
       ws.onmessage = (e) => {
         const msg = JSON.parse(e.data as string);
@@ -199,10 +215,7 @@ describe("RouterNotification", () => {
         3000,
       );
 
-      const ws = new WebSocket(wsUrl, {
-        // @ts-expect-error - Bun WebSocket accepts headers here
-        headers,
-      });
+      const ws = openWebSocket(wsUrl, headers);
 
       let receivedTerminated = false;
 

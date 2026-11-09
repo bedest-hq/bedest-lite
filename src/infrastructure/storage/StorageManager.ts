@@ -41,6 +41,15 @@ class StorageManager {
     return null;
   }
 
+  /** Test hook: swap the provider; returns a function restoring the old one. */
+  useProviderForTesting(provider: IProvider | null) {
+    const previous = this.activeProvider;
+    this.activeProvider = provider;
+    return () => {
+      this.activeProvider = previous;
+    };
+  }
+
   /** Readiness probe: throws when the configured provider is unusable. */
   async healthCheck(): Promise<"ok" | "disabled"> {
     if (!this.activeProvider) {

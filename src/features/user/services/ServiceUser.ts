@@ -61,6 +61,7 @@ class ServiceUser extends ServiceBase<typeof SUser, string> {
       id: SUser.id,
       name: SUser.name,
       role: SUser.role,
+      status: SUser.status,
       avatarId: SUser.avatarId,
       createdAt: SUser.createdAt,
     });

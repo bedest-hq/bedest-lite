@@ -7,6 +7,7 @@ import ServiceSession, {
 } from "@/features/session/services/ServiceSession";
 import ServiceSystem from "@f/system/services/ServiceSystem";
 import { EUserRole } from "@f/user/enums/EUserRole";
+import { EUserStatus } from "@f/user/enums/EUserStatus";
 
 import ServiceSystemLog from "@f/system/services/ServiceSystemLog";
 import { IApp, IUserApp, TDbOrTx } from "bedest-core";
@@ -24,7 +25,13 @@ class ServiceAuth {
     const [row] = await tx
       .select({ userId: SUser.id, role: SUser.role })
       .from(SUser)
-      .where(and(eq(SUser.id, userId), eq(SUser.isDeleted, false)))
+      .where(
+        and(
+          eq(SUser.id, userId),
+          eq(SUser.isDeleted, false),
+          eq(SUser.status, EUserStatus.ACTIVE),
+        ),
+      )
       .limit(1);
     return row;
   }
@@ -82,6 +89,8 @@ class ServiceAuth {
           // Matches the unique index on lower(email) [SEC-21].
           sql`lower(${SUser.email}) = ${email}`,
           eq(SUser.isDeleted, false),
+          // INVITED users cannot log in yet [FEAT-06].
+          eq(SUser.status, EUserStatus.ACTIVE),
         ),
       )
       .limit(1);

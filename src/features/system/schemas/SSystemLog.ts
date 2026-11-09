@@ -22,5 +22,9 @@ export const SSystemLog = pgTable(
 
     createdAt: timestamp({ withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("idx_audit_logs_entity").on(t.entity, t.entityId)],
+  (t) => [
+    index("idx_audit_logs_entity").on(t.entity, t.entityId),
+    // Audit log, newest first [PERF-01].
+    index("idx_audit_logs_created").on(t.createdAt.desc().nullsFirst()),
+  ],
 );

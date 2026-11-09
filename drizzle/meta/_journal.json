@@ -85,6 +85,13 @@
       "when": 1794206131530,
       "tag": "0011_organizations_singleton",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794207854562,
+      "tag": "0012_perf_indexes",
+      "breakpoints": true
     }
   ]
 }

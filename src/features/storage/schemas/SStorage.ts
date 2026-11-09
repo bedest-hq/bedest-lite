@@ -1,5 +1,6 @@
 import { baseColumns, UtilDbSchema } from "bedest-core";
-import { pgTable, varchar, integer, uuid } from "drizzle-orm/pg-core";
+import { pgTable, varchar, integer, uuid, index } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { EStorageStatus, EStorageStatusPg } from "../enums/EStorageStatus";
 
 export const SStorage = pgTable(
@@ -16,5 +17,11 @@ export const SStorage = pgTable(
     // users already reference storage_files (avatarId).
     uploadedBy: uuid(),
   },
-  (t) => [UtilDbSchema.activeIndex("idx_storage_active", t.id)],
+  (t) => [
+    UtilDbSchema.activeIndex("idx_storage_active", t.id),
+    // File list, newest first [PERF-01].
+    index("idx_storage_created")
+      .on(t.createdAt.desc().nullsFirst())
+      .where(sql`${t.isDeleted} = false`),
+  ],
 );

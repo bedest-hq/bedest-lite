@@ -1,0 +1,3 @@
+CREATE INDEX "idx_notifications_user_created" ON "notifications" USING btree ("userId","createdAt" DESC NULLS FIRST) WHERE "notifications"."isDeleted" = false;--> statement-breakpoint
+CREATE INDEX "idx_storage_created" ON "storage_files" USING btree ("createdAt" DESC NULLS FIRST) WHERE "storage_files"."isDeleted" = false;--> statement-breakpoint
+CREATE INDEX "idx_audit_logs_created" ON "system_audit_logs" USING btree ("createdAt" DESC NULLS FIRST);

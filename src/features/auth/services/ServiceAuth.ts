@@ -9,6 +9,7 @@ import { EUserRole } from "@f/user/enums/EUserRole";
 import ServiceSystemLog from "@f/system/services/ServiceSystemLog";
 import { IApp, IUserApp, TDbOrTx } from "bedest-core";
 import WsManager from "@/infrastructure/websocket/WsManager";
+import ServiceLoginLockout, { emailHashOf } from "./ServiceLoginLockout";
 
 const DUMMY_HASH = await Bun.password.hash("invalid_dummy_password");
 
@@ -26,8 +27,47 @@ class ServiceAuth {
     return row;
   }
 
-  async login(c: IApp, data: { email: string; password: string }) {
+  /**
+   * LOGIN_FAILED / LOGIN_LOCKED system events [FEAT-07]: e-mail hash, IP
+   * and user agent only — never the password or the address.
+   */
+  private async auditLoginEvent(
+    c: IApp,
+    action: "LOGIN_FAILED" | "LOGIN_LOCKED",
+    payload: Record<string, unknown>,
+  ) {
+    await ServiceSystemLog.logEvent(c.db, {
+      action,
+      entity: "auth",
+      entityId: null,
+      payload,
+    });
+  }
+
+  async login(
+    c: IApp,
+    data: { email: string; password: string },
+    meta: { ip: string; userAgent: string } = { ip: "unknown", userAgent: "" },
+  ) {
     const email = UtilEmail.normalize(data.email);
+    const emailHash = emailHashOf(email);
+    const auditPayload = {
+      emailHash,
+      ip: meta.ip,
+      userAgent: meta.userAgent.slice(0, 512),
+    };
+
+    // Locked: the same work and the same answer as a wrong password, and
+    // the password is not checked at all [FEAT-07].
+    if (await ServiceLoginLockout.isLocked(c, emailHash)) {
+      await Bun.password.verify(data.password, DUMMY_HASH);
+      await this.auditLoginEvent(c, "LOGIN_FAILED", {
+        ...auditPayload,
+        locked: true,
+      });
+      throw invalidCredentials();
+    }
+
     const [user] = await c.db
       .select({
         userId: SUser.id,
@@ -44,16 +84,23 @@ class ServiceAuth {
       )
       .limit(1);
 
-    if (!user) {
-      await Bun.password.verify(data.password, DUMMY_HASH);
+    const verifyPass = user
+      ? await Bun.password.verify(data.password, user.password)
+      : await Bun.password.verify(data.password, DUMMY_HASH).then(() => false);
+
+    if (!user || !verifyPass) {
+      const { lockedNow } = await ServiceLoginLockout.recordFailure(
+        c,
+        emailHash,
+      );
+      await this.auditLoginEvent(c, "LOGIN_FAILED", auditPayload);
+      if (lockedNow) {
+        await this.auditLoginEvent(c, "LOGIN_LOCKED", auditPayload);
+      }
       throw invalidCredentials();
     }
 
-    const verifyPass = await Bun.password.verify(data.password, user.password);
-
-    if (!verifyPass) {
-      throw invalidCredentials();
-    }
+    await ServiceLoginLockout.reset(c, emailHash);
 
     if ((await ServiceSystem.getMaintenance(c)) && user.role !== "SYSTEM") {
       throw UtilHttp.fail(503);
@@ -93,6 +140,12 @@ class ServiceAuth {
     await ServiceSession.remove(c, c.session.sessionId);
     // Only this device: other sessions of the user stay connected [BUG-06].
     WsManager.disconnectSession(c.session.sessionId);
+    await ServiceSystemLog.log(c, {
+      action: "LOGOUT",
+      entity: "session",
+      entityId: c.session.sessionId,
+      payload: {},
+    });
   }
 
   /**

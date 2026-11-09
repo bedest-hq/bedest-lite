@@ -2,8 +2,11 @@ import { UtilHttp } from "@/common/utils/UtilHttp";
 import { UtilCursor } from "@/common/utils/UtilCursor";
 import { SSystemLog } from "../schemas/SSystemLog";
 import { logger } from "@/infrastructure/logger/logger";
-import { IUserApp } from "bedest-core";
+import { IUserApp, TDb } from "bedest-core";
 import { and, count, desc, eq, SQL } from "drizzle-orm";
+
+/** userId of events without an acting user (failed logins, jobs). */
+export const SYSTEM_AUDIT_USER_ID = "00000000-0000-0000-0000-000000000000";
 
 class ServiceSystemLog {
   async log(
@@ -25,6 +28,36 @@ class ServiceSystemLog {
       });
     } catch (err) {
       logger.error({ err, params }, "Audit Log insertion failed");
+    }
+  }
+
+  /**
+   * A system event without an authenticated actor (e.g. LOGIN_FAILED,
+   * FEAT-07). Errors are logged and swallowed like `log`.
+   */
+  async logEvent(
+    db: TDb,
+    params: {
+      userId?: string;
+      action: string;
+      entity: string;
+      entityId: string | null;
+      payload: Record<string, unknown>;
+    },
+  ) {
+    try {
+      await db.insert(SSystemLog).values({
+        userId: params.userId ?? SYSTEM_AUDIT_USER_ID,
+        action: params.action,
+        entity: params.entity,
+        entityId: params.entityId,
+        payload: params.payload,
+      });
+    } catch (err) {
+      logger.error(
+        { err, action: params.action },
+        "Audit Log insertion failed",
+      );
     }
   }
 

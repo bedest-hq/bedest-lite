@@ -60,6 +60,71 @@ Remediation release: security, correctness, operations and the missing account f
 
 * **Redact plaintext secrets already stored in audit logs [SEC-06].** Older versions stored fields such as `currentPassword` unredacted in `system_audit_logs.payload`. After upgrading run `bun run src/scripts/audit/RedactAuditLogs.ts` (dry run, reports the number of affected rows) and then `bun run src/scripts/audit/RedactAuditLogs.ts --apply` (rewrites them in batches of 500). Rotate any password that may have been exposed.
 
+## [2.0.0](https://github.com/bedest-hq/bedest-lite/compare/v1.1.0...v2.0.0) (2026-11-09)
+
+
+### ⚠ BREAKING CHANGES
+
+* **auth:** tokens issued before this change lack the new claims, so every user has to log in again once after the deploy.
+
+### Features
+
+* **app:** graceful shutdown on SIGTERM/SIGINT [OPS-08][FEAT-03] ([02bdab6](https://github.com/bedest-hq/bedest-lite/commit/02bdab6ad15e9a3dc1b5e1836c8577ee83fda981))
+* **audit:** append-only audit log trigger [FEAT-13] ([c216ca1](https://github.com/bedest-hq/bedest-lite/commit/c216ca1176d68507381d175ba37e4e41f6978788))
+* **auth:** account lockout and security-event audit [FEAT-07] ([6aa5efd](https://github.com/bedest-hq/bedest-lite/commit/6aa5efd6e780ad83dc0cfdff6464af59ee9212ad))
+* **auth:** password reset and invitations by e-mail [FEAT-06] ([e83a9ea](https://github.com/bedest-hq/bedest-lite/commit/e83a9ea5bdc61f3c6e5c01d01ef103bf5809d817))
+* **auth:** session management [FEAT-05] ([a8dad47](https://github.com/bedest-hq/bedest-lite/commit/a8dad4799a9b3ec7ca52692228849841c82b355c))
+* **db:** add a runtime migration runner [OPS-01][FEAT-02] ([81ebf94](https://github.com/bedest-hq/bedest-lite/commit/81ebf9458670e11b1ca85d4427a52583bf34867b))
+* **health:** add liveness and readiness endpoints [FEAT-01] ([6ea318d](https://github.com/bedest-hq/bedest-lite/commit/6ea318de9f40e55d806e4f7d1423e6b317115976))
+* **observability:** request ids and access logs [FEAT-04] ([7336d90](https://github.com/bedest-hq/bedest-lite/commit/7336d90cff3f7ebc957f2e213810a67a06210a72))
+
+
+### Bug Fixes
+
+* **audit:** configured entity, nullable entityId, typed hooks [BUG-11][QLT-03] ([0beee97](https://github.com/bedest-hq/bedest-lite/commit/0beee972a41e67bd8b5e6c31566441b1d3cc96a4))
+* **audit:** consume normalized-key scrubber and add RedactAuditLogs [SEC-06] ([5a3d845](https://github.com/bedest-hq/bedest-lite/commit/5a3d845dfc5ea597200042b786f14ae0fc36a55c))
+* **auth:** 12-128 character policy for new passwords [SEC-23] ([c94642b](https://github.com/bedest-hq/bedest-lite/commit/c94642b4b16700f8f1ec3ee2afeb093867af643b))
+* **auth:** logout disconnects only the current session [BUG-06] ([8613958](https://github.com/bedest-hq/bedest-lite/commit/8613958bb81e9b105361688dc993118862129003))
+* **auth:** remove default-credential login fallback [SEC-01] ([d297004](https://github.com/bedest-hq/bedest-lite/commit/d297004ec64ae31fba3a850c43cf242166b42c08))
+* **auth:** revoke sessions and re-read principals from the database [SEC-08] ([5ee7eda](https://github.com/bedest-hq/bedest-lite/commit/5ee7eda5b25a38e712f6dc3a68f7715a8715b03f))
+* **auth:** rotate refresh sessions atomically and detect token reuse [SEC-09] ([c9ce34f](https://github.com/bedest-hq/bedest-lite/commit/c9ce34fd0c066c4c13da8897e31e22a27c98da9f))
+* **auth:** scope rate limits per route and stop refunding failed logins [SEC-07] ([139783f](https://github.com/bedest-hq/bedest-lite/commit/139783f4945b3accd41c932398799e7a22af4791))
+* **auth:** scope the refresh cookie and bind tokens to iss/aud/typ [SEC-24] ([1917a40](https://github.com/bedest-hq/bedest-lite/commit/1917a40bd04bbc8b30cae6fd5b9278cc755d893e))
+* **auth:** stop returning the access token from /auth/refresh [SEC-14] ([f9356ea](https://github.com/bedest-hq/bedest-lite/commit/f9356ea05dd758cf1b11bbc28b91f7efbab3298b))
+* **ci:** inherit PATH in child process tests and disable JSC IPInt in CI ([afddb55](https://github.com/bedest-hq/bedest-lite/commit/afddb5543acdfab602814abac933db20845d9a87))
+* **compose:** production-grade stack with roles and migrations [OPS-03] ([3be7b47](https://github.com/bedest-hq/bedest-lite/commit/3be7b47e79de38e39f3228c81ea7d21d6129f062))
+* **db:** two-role model so the API never runs as the schema owner [OPS-03][FEAT-13] ([597fb40](https://github.com/bedest-hq/bedest-lite/commit/597fb40d39198875716603899b98243409478c82))
+* **db:** verify Postgres TLS certificates by default in production [SEC-15] ([eb9c4e1](https://github.com/bedest-hq/bedest-lite/commit/eb9c4e1f6b4fe2477f28736da781862450fb57a0))
+* **docker:** reproducible, non-root image with committed migrations [OPS-02][OPS-01] ([20bec69](https://github.com/bedest-hq/bedest-lite/commit/20bec694a2d5144621567ca8ac700f8a5b1e716e))
+* **docs:** hide API docs in production and migrate to @elysiajs/openapi [SEC-17] ([151a4da](https://github.com/bedest-hq/bedest-lite/commit/151a4da27eb69960776ae735e6798089fab968f1))
+* **env:** report every env error, enforce secret rules, coerce integers [SEC-16] ([f396ccb](https://github.com/bedest-hq/bedest-lite/commit/f396ccbccbcae2ddf954a38a8a6e1f6e24462b90))
+* **env:** require NODE_ENV and explicit production CORS origins [SEC-02] ([05f6669](https://github.com/bedest-hq/bedest-lite/commit/05f66691163f713ac910ffd5a985404cc15aac74))
+* **errors:** one error envelope for every failure [BUG-14] ([7d71c8b](https://github.com/bedest-hq/bedest-lite/commit/7d71c8be93ad295dfbfd5442812679c838924027))
+* **http:** security headers, body limit, CSRF and WebSocket origin checks [SEC-18] ([0863527](https://github.com/bedest-hq/bedest-lite/commit/08635270315fceb375af5bbc8711114a31e9c27b))
+* **logger:** keep error details and redact secrets in logs [SEC-20] ([475dc97](https://github.com/bedest-hq/bedest-lite/commit/475dc970ffb6fc6a13df6964adcb44532647a5f0))
+* **organization:** enforce the singleton and upsert it in one transaction [BUG-17] ([811694b](https://github.com/bedest-hq/bedest-lite/commit/811694bf8329dc86d8ba19fff0379c78ee9e7bd0))
+* **scripts:** guard destructive resets and fail loudly [OPS-09] ([ec0ad37](https://github.com/bedest-hq/bedest-lite/commit/ec0ad37275c447ad98e2b6f9f8afe76e299e94fd))
+* **scripts:** remove ContextBuilder and its fake system context [BUG-12] ([e87a4ee](https://github.com/bedest-hq/bedest-lite/commit/e87a4ee1773686387aecf5ff849a7d4163c08c56))
+* **seed:** remove hardcoded superuser password and e-mail [SEC-03] ([505c7a7](https://github.com/bedest-hq/bedest-lite/commit/505c7a71e760679e1cbe9b2689c2419b6c72d3cb))
+* **service:** empty update payloads are a uniform 400 [BUG-02] ([1ff6f8a](https://github.com/bedest-hq/bedest-lite/commit/1ff6f8ace851c57aa50717f6f58958ba9d7c98d6))
+* **storage:** only the uploader or an admin may delete a file [SEC-26] ([2252239](https://github.com/bedest-hq/bedest-lite/commit/2252239effd2917c15699f425dc7c0f434668982))
+* **storage:** stream S3 downloads, surface backend errors, configurable path style [BUG-18] ([db29dcc](https://github.com/bedest-hq/bedest-lite/commit/db29dcc71785c4abb7fb568a2423f12c3236ffc5))
+* **storage:** write the row before the object and never delete eagerly [BUG-03] ([7cd07e1](https://github.com/bedest-hq/bedest-lite/commit/7cd07e176adb8565d1a9bd545f5b92790301b840))
+* **system:** keep maintenance mode in the database [BUG-08] ([98193f8](https://github.com/bedest-hq/bedest-lite/commit/98193f808b2dbbe17702e7f8eac24d003eb58bff))
+* **update:** read the template version from package.json [OPS-10] ([6bab5df](https://github.com/bedest-hq/bedest-lite/commit/6bab5df567cb94d99741e393c84d22e3ee5c798f))
+* **user:** one role policy for create, update and remove [SEC-11][SEC-12] ([935403d](https://github.com/bedest-hq/bedest-lite/commit/935403d5299e66a6e35e2672d22747b3f2a679fb))
+* **user:** prevent self-lockout [SEC-13] ([1d5a96d](https://github.com/bedest-hq/bedest-lite/commit/1d5a96d5a98ed73c2e7312a39c631943b42e6b4d))
+* **user:** validate and normalize e-mail addresses [SEC-21] ([24c01b5](https://github.com/bedest-hq/bedest-lite/commit/24c01b58e431d5b1711a60c236530f23142d8fba))
+* **validation:** bound request strings by their column sizes [QLT-11] ([c37cbdb](https://github.com/bedest-hq/bedest-lite/commit/c37cbdbdec7df2852e483a1c695224ccaa3269ff))
+* **validation:** one schema per enum, drop VDefault [BUG-13] ([1465636](https://github.com/bedest-hq/bedest-lite/commit/14656364de85f668af120fe4e241fbbe63884778))
+* **ws:** one registry keyed by connection id, close sockets on token expiry [BUG-10] ([92567bb](https://github.com/bedest-hq/bedest-lite/commit/92567bb342d739f469411840f83ad435c32b17d6))
+
+
+### Performance Improvements
+
+* **api:** optional cursor pagination for the audit log and notifications [PERF-02] ([66fa67d](https://github.com/bedest-hq/bedest-lite/commit/66fa67d17b5e298693af72c547106c91c38a226e))
+* **db:** indexes for RLS predicates and newest-first lists [PERF-01] ([7d6e2ba](https://github.com/bedest-hq/bedest-lite/commit/7d6e2baf1f63e7782cfcbd61052303655dec9cd6))
+
 ## [1.1.0](https://github.com/bedest-hq/bedest-lite/compare/v1.0.0...v1.1.0) (2026-10-10)
 
 
